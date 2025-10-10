@@ -1,57 +1,30 @@
+use odra::casper_types::U256;
 use odra::prelude::*;
+use odra_modules::cep18_token::Cep18;
 
-/// A module definition. Each module struct consists Vars and Mappings
-/// or/and another modules.
+pub const MINIMUM_LIQUIDITY: u64 = 1000;
+
+/// CasperswapV2Pair contract - AMM implementation based on Uniswap V2
 #[odra::module]
 pub struct CasperswapV2Pair {
-    /// The module itself does not store the value,
-    /// it's a proxy that writes/reads value to/from the host.
-    value: Var<bool>,
 }
 
-/// Module implementation.
-/// 
-/// To generate entrypoints,
-/// an implementation block must be marked as #[odra::module].
+/// Module implementation
 #[odra::module]
 impl CasperswapV2Pair {
-    /// Odra constructor.
-    /// 
-    /// Initializes the contract.
-    pub fn init(&mut self) {
-        self.value.set(false);
-    }
+}
 
-    /// Replaces the current value with the passed argument.
-    pub fn set(&mut self, value: bool) {
-        self.value.set(value);
-    }
-
-    /// Replaces the current value with the opposite value.
-    pub fn flip(&mut self) {
-        self.value.set(!self.get());
-    }
-
-    /// Retrieves value from the storage. 
-    /// If the value has never been set, the default value is returned.
-    pub fn get(&self) -> bool {
-        self.value.get_or_default()
-    }
+impl CasperswapV2Pair {
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::casperswap_v2_pair::CasperswapV2Pair;
-    use odra::host::{Deployer, NoArgs};
+    use super::*;
+    use odra::host::Deployer;
+
 
     #[test]
-    fn flipping() {
+    fn test_pair_init() {
         let env = odra_test::env();
-        // To test a module we need to deploy it. `CasperswapV2Pair` implements `Deployer` trait, 
-        // so we can use it to deploy the module.
-        let mut contract = CasperswapV2Pair::deploy(&env, NoArgs);
-        assert!(!contract.get());
-        contract.flip();
-        assert!(contract.get());
     }
 }

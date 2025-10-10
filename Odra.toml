@@ -1,3 +1,8 @@
 [[contracts]]
 fqn = "casperswap_contracts::casperswap_v2_pair::CasperswapV2Pair"
 
+[[contracts]]
+fqn = "casperswap_contracts::sample_tokens::SampleTokenA"
+
+[[contracts]]
+fqn = "casperswap_contracts::sample_tokens::SampleTokenB"

@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 odra = { workspace = true }
+odra-modules = { workspace = true }
 
 [dev-dependencies]
 odra-test = { workspace = true }

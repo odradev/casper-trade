@@ -3,3 +3,4 @@
 extern crate alloc;
 
 pub mod casperswap_v2_pair;
+pub mod sample_tokens;

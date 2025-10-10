@@ -523,6 +523,7 @@ version = "0.1.0"
 dependencies = [
  "odra",
  "odra-build",
+ "odra-modules",
  "odra-test",
 ]
 
@@ -2061,6 +2062,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "odra-modules"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bc5527060b7e564034c71afc307c3c70c57bbdfbd502ab833fd997968eff466"
+dependencies = [
+ "base16",
+ "base64 0.22.1",
+ "odra",
+ "odra-build",
+ "serde",
+ "serde-json-wasm",
+ "serde_json",
+]
+
+[[package]]
 name = "odra-schema"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2751,6 +2767,15 @@ checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
  "serde_core",
  "serde_derive",
+]
+
+[[package]]
+name = "serde-json-wasm"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f05da0d153dd4595bdffd5099dc0e9ce425b205ee648eb93437ff7302af8c9a5"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
