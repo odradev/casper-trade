@@ -1,0 +1,13 @@
+[package]
+name = "casper-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+casperswap_contracts = { path = "../casperswap_contracts" }
+odra = { workspace = true }
+odra-cli = { workspace = true }
+
+[[bin]]
+name = "casperswap_cli"
+path = "cli.rs"

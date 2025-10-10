@@ -1,0 +1,3 @@
+[[contracts]]
+fqn = "casperswap_contracts::casperswap_v2_pair::CasperswapV2Pair"
+
