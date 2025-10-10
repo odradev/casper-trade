@@ -6,3 +6,6 @@ fqn = "casperswap_contracts::sample_tokens::SampleTokenA"
 
 [[contracts]]
 fqn = "casperswap_contracts::sample_tokens::SampleTokenB"
+
+[[contracts]]
+fqn = "casperswap_contracts::factory::Factory"

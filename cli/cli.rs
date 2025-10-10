@@ -1,8 +1,8 @@
 //! This example demonstrates how to use the `odra-cli` tool to deploy and interact with a smart contract.
 
-use casperswap_contracts::casperswap_v2_pair::CasperswapV2Pair;
+use casperswap_contracts::casperswap_v2_pair::{CasperswapV2Pair, CasperswapV2PairInitArgs};
 use casperswap_contracts::sample_tokens::{SampleTokenA, SampleTokenB};
-use odra::host::{HostEnv, NoArgs};
+use odra::host::HostEnv;
 use odra_cli::{deploy::DeployScript, DeployedContractsContainer, DeployerExt, OdraCli};
 
 /// Deploys the `CasperswapV2Pair` and `Flapper` contracts.
@@ -21,7 +21,7 @@ impl DeployScript for ContractsDeployScript {
 
         let _ = CasperswapV2Pair::load_or_deploy(
             &env,
-            NoArgs,
+            CasperswapV2PairInitArgs { factory },
             container,
             250_000_000_000, // Adjust gas limit as needed
         )?;

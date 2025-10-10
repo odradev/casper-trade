@@ -1,4 +1,3 @@
-
 use odra::{casper_types::U256, prelude::*};
 
 #[odra::event]

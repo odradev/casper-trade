@@ -1,25 +1,271 @@
-use odra::prelude::*;
+use odra::{casper_types::U256, prelude::*, ContractRef};
+use odra_modules::{
+    cep18_token::{Cep18, Cep18ContractRef},
+    erc20::Erc20ContractRef,
+};
+
+use crate::{
+    casperswap_v2_pair::{errors::CasperswapV2PairError, events::Mint},
+    factory::FactoryContractRef,
+};
+pub mod errors;
 pub mod events;
 
 pub const MINIMUM_LIQUIDITY: u64 = 1000;
 
 /// CasperswapV2Pair contract - implementation based on Uniswap V2
-#[odra::module]
-pub struct CasperswapV2Pair {}
+#[odra::module(events = [Mint])]
+pub struct CasperswapV2Pair {
+    pub token: SubModule<Cep18>,
+    pub factory: Var<Address>,
+    pub token0: Var<Address>,
+    pub token1: Var<Address>,
+    pub reserve0: Var<U256>,
+    pub reserve1: Var<U256>,
+    pub k_last: Var<U256>,
+    pub block_timestamp_last: Var<u64>,
+}
 
 /// Module implementation
 #[odra::module]
-impl CasperswapV2Pair {}
+impl CasperswapV2Pair {
+    delegate! {
+        to self.token {
+            fn total_supply(&self) -> U256;
+            fn balance_of(&self, address: &Address) -> U256;
+            fn transfer(&mut self, recipient: &Address, amount: &U256);
+            fn transfer_from(&mut self, owner: &Address, recipient: &Address, amount: &U256);
+            fn approve(&mut self, spender: &Address, amount: &U256);
+            fn allowance(&self, owner: &Address, spender: &Address) -> U256;
+        }
+    }
 
-impl CasperswapV2Pair {}
+    pub fn init(&mut self, factory: Address) {
+        self.factory.set(factory);
+        let symbol = "LP";
+        let name = "CasperswapV2Pair";
+        let decimals = 18;
+        let initial_supply = U256::from(0);
+        self.token.init(
+            symbol.to_string(),
+            name.to_string(),
+            decimals,
+            initial_supply,
+        );
+    }
+
+    pub fn initialize(&mut self, token0: Address, token1: Address) {
+        // TODO: Uncomment this when the factory is implemented
+        // if self.factory.get_or_revert_with(CasperswapV2PairError::Misconfigured) != self.env().caller() {
+        //     self.env().revert(CasperswapV2PairError::Forbidden);
+        // }
+        self.token0.set(token0);
+        self.token1.set(token1);
+    }
+
+    pub fn mint(&mut self, to: Address) {
+        // TODO: below should be zero address or some kind of locking mechanism
+        let zero_address = self.env().self_address();
+        let balance0 = self.token0().balance_of(&self.env().self_address());
+        let balance1 = self.token1().balance_of(&self.env().self_address());
+        let reserve0 = self.reserve0.get_or_default();
+        let reserve1 = self.reserve1.get_or_default();
+
+        let amount0 = balance0 - reserve0;
+        let amount1 = balance1 - reserve1;
+
+        let fee_on = self._mintFee(reserve0, reserve1);
+        let total_supply = self.total_supply();
+        let minimum_liquidity = U256::from(MINIMUM_LIQUIDITY);
+
+        let liquidity = if total_supply.is_zero() {
+            // permanently lock the first MINIMUM_LIQUIDITY tokens
+            self.token.raw_mint(&zero_address, &minimum_liquidity);
+            (amount0 * amount1) - minimum_liquidity
+        } else {
+            (amount0 * total_supply / reserve0).min(amount1 * total_supply / reserve1)
+        };
+
+        if liquidity.is_zero() {
+            self.env()
+                .revert(CasperswapV2PairError::InsufficientLiquidityMinted);
+        }
+
+        self.token.raw_mint(&to, &liquidity);
+
+        if fee_on {
+            self.k_last.set(reserve0 * reserve1);
+        }
+
+        self.env().emit_event(Mint {
+            sender: self.env().caller(),
+            amount0,
+            amount1,
+        });
+    }
+
+    pub fn get_reserve0(&self) -> U256 {
+        self.reserve0.get_or_default()
+    }
+
+    pub fn get_reserve1(&self) -> U256 {
+        self.reserve1.get_or_default()
+    }
+}
+
+impl CasperswapV2Pair {
+    // if fee is on, mint liquidity equivalent to 1/6th of the growth in sqrt(k)
+    fn _mintFee(&mut self, reserve0: U256, reserve1: U256) -> bool {
+        let fee_to = self.factory().fee_to();
+        let fee_on = fee_to.is_some();
+
+        let k_last = self.k_last.get_or_default();
+
+        if fee_on {
+            if !k_last.is_zero() {
+                let root_k = (reserve0 * reserve1).integer_sqrt();
+                let root_k_last = k_last.integer_sqrt();
+                if (root_k > root_k_last) {
+                    let numerator = self.total_supply() * (root_k - root_k_last);
+                    let denominator = root_k * 5 + root_k_last;
+                    let liquidity = numerator / denominator;
+                    if liquidity > U256::zero() {
+                        self.token.raw_mint(&fee_to.unwrap(), &liquidity);
+                    }
+                }
+            }
+        } else if k_last != U256::zero() {
+            self.k_last.set(U256::zero());
+        }
+
+        fee_on
+    }
+
+    fn factory(&self) -> FactoryContractRef {
+        FactoryContractRef::new(
+            self.env(),
+            self.factory
+                .get_or_revert_with(CasperswapV2PairError::NotInitialized),
+        )
+    }
+
+    fn token0(&self) -> Cep18ContractRef {
+        Cep18ContractRef::new(
+            self.env(),
+            self.token0
+                .get_or_revert_with(CasperswapV2PairError::NotInitialized),
+        )
+    }
+
+    fn token1(&self) -> Cep18ContractRef {
+        Cep18ContractRef::new(
+            self.env(),
+            self.token1
+                .get_or_revert_with(CasperswapV2PairError::NotInitialized),
+        )
+    }
+}
 
 #[cfg(test)]
 mod tests {
+    use crate::{
+        factory::{Factory, FactoryInitArgs},
+        sample_tokens::{
+            SampleTokenA, SampleTokenAHostRef, SampleTokenAInitArgs, SampleTokenB,
+            SampleTokenBHostRef, SampleTokenBInitArgs,
+        },
+        utils::expand_to_18_decimals,
+    };
+
     use super::*;
-    use odra::host::Deployer;
+    use odra::{
+        casper_types::U256,
+        host::{Deployer, HostEnv},
+    };
+
+    struct PairEnv {
+        pub odra_env: HostEnv,
+        pub pair: CasperswapV2PairHostRef,
+        pub token0: SampleTokenAHostRef,
+        pub token1: SampleTokenBHostRef,
+        pub alice: Address,
+        pub bob: Address,
+    }
+
+    fn setup() -> PairEnv {
+        let env = odra_test::env();
+        let factory = Factory::deploy(
+            &env,
+            FactoryInitArgs {
+                fee_to: Some(env.get_account(0)),
+            },
+        );
+        let token0 = SampleTokenA::deploy(
+            &env,
+            SampleTokenAInitArgs {
+                name: "Sample Token A".to_string(),
+                symbol: "STA".to_string(),
+                decimals: 18,
+                initial_supply: U256::from(1000000u64),
+            },
+        );
+        let token1 = SampleTokenB::deploy(
+            &env,
+            SampleTokenBInitArgs {
+                name: "Sample Token B".to_string(),
+                symbol: "STB".to_string(),
+                decimals: 18,
+                initial_supply: U256::from(2000000u64),
+            },
+        );
+        let mut pair = CasperswapV2Pair::deploy(
+            &env,
+            CasperswapV2PairInitArgs {
+                factory: factory.address(),
+            },
+        );
+        pair.initialize(token0.address(), token1.address());
+        let alice = env.get_account(1);
+        let bob = env.get_account(2);
+        PairEnv {
+            odra_env: env,
+            pair,
+            token0,
+            token1,
+            alice,
+            bob,
+        }
+    }
 
     #[test]
     fn test_pair_init() {
-        let env = odra_test::env();
+        let mut env = setup();
+        let token0amount = expand_to_18_decimals(1);
+        let token1amount = expand_to_18_decimals(4);
+
+        env.token0.transfer(&env.pair.address(), &token0amount);
+        env.token1.transfer(&env.pair.address(), &token1amount);
+
+        let expected_liquidity = expand_to_18_decimals(2);
+
+        env.pair.mint(env.alice);
+
+        assert_eq!(env.pair.total_supply(), expected_liquidity);
+        assert_eq!(
+            env.pair.balance_of(&env.alice),
+            expected_liquidity.saturating_sub(U256::from(MINIMUM_LIQUIDITY))
+        );
+        assert_eq!(
+            env.token0.balance_of(&env.pair.address()),
+            U256::from(token0amount)
+        );
+        assert_eq!(
+            env.token1.balance_of(&env.pair.address()),
+            U256::from(token1amount)
+        );
+        let reserve0 = env.pair.get_reserve0();
+        let reserve1 = env.pair.get_reserve1();
+        assert_eq!(reserve0, U256::from(token0amount));
+        assert_eq!(reserve1, U256::from(token1amount));
     }
 }
