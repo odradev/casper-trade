@@ -123,9 +123,9 @@ mod tests {
                 symbol: "STA".to_string(),
                 decimals: 18,
                 initial_supply: U256::from(1000000u64),
-            }
+            },
         );
-        
+
         assert_eq!(contract.symbol(), "STA"); // Currently returns symbol
         assert_eq!(contract.name(), "Sample Token A"); // Currently returns name
         assert_eq!(contract.decimals(), 18);
@@ -142,9 +142,9 @@ mod tests {
                 symbol: "STB".to_string(),
                 decimals: 18,
                 initial_supply: U256::from(2000000u64),
-            }
+            },
         );
-        
+
         assert_eq!(contract.symbol(), "STB"); // Currently returns symbol
         assert_eq!(contract.name(), "Sample Token B"); // Currently returns name
         assert_eq!(contract.decimals(), 18);
@@ -161,15 +161,18 @@ mod tests {
                 symbol: "STA".to_string(),
                 decimals: 18,
                 initial_supply: U256::from(1000000u64),
-            }
+            },
         );
-        
+
         let initial_supply = contract.total_supply();
         let mint_amount = U256::from(100000u64);
-        
+
         contract.mint(&env.caller(), &mint_amount);
-        
+
         assert_eq!(contract.total_supply(), initial_supply + mint_amount);
-        assert_eq!(contract.balance_of(&env.caller()), initial_supply + mint_amount);
+        assert_eq!(
+            contract.balance_of(&env.caller()),
+            initial_supply + mint_amount
+        );
     }
 }

@@ -1,13 +1,9 @@
 //! This example demonstrates how to use the `odra-cli` tool to deploy and interact with a smart contract.
 
-use casperswap_contracts::casperswap_v2_pair::{CasperswapV2Pair};
+use casperswap_contracts::casperswap_v2_pair::CasperswapV2Pair;
 use casperswap_contracts::sample_tokens::{SampleTokenA, SampleTokenB};
 use odra::host::{HostEnv, NoArgs};
-use odra_cli::{
-    deploy::DeployScript,
-    DeployedContractsContainer, DeployerExt,
-    OdraCli,
-};
+use odra_cli::{deploy::DeployScript, DeployedContractsContainer, DeployerExt, OdraCli};
 
 /// Deploys the `CasperswapV2Pair` and `Flapper` contracts.
 pub struct ContractsDeployScript;
@@ -20,9 +16,9 @@ impl DeployScript for ContractsDeployScript {
     ) -> Result<(), odra_cli::deploy::Error> {
         // Create mock token addresses for demonstration
         let token0 = env.caller(); // Mock token0 address
-        let token1 = env.caller(); // Mock token1 address  
+        let token1 = env.caller(); // Mock token1 address
         let factory = env.caller(); // Mock factory address
-        
+
         let _ = CasperswapV2Pair::load_or_deploy(
             &env,
             NoArgs,
