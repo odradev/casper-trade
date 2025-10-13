@@ -428,8 +428,8 @@ mod tests {
     #[test]
     fn swap_token0() {
         let mut env = setup();
-        let token0amount = expand_to_18_decimals(1);
-        let token1amount = expand_to_18_decimals(4);
+        let token0amount = expand_to_18_decimals(5);
+        let token1amount = expand_to_18_decimals(10);
 
         add_liquidity(&mut env, token0amount, token1amount);
 
@@ -466,5 +466,131 @@ mod tests {
             env.token1.balance_of(&env.owner),
             total_supply_token1 - token1amount + expected_output_amount
         );
+    }
+
+    #[test]
+    fn swap_token1() {
+        let mut env = setup();
+        let token0amount = expand_to_18_decimals(5);
+        let token1amount = expand_to_18_decimals(10);
+
+        add_liquidity(&mut env, token0amount, token1amount);
+
+        let swap_amount = expand_to_18_decimals(1);
+        let expected_output_amount = U256::from(453305446940074565 as u128);
+
+        env.token1.transfer(&env.pair.address(), &swap_amount);
+        env.pair
+            .swap(expected_output_amount, U256::zero(), env.owner, None);
+
+        let reserve0 = env.pair.get_reserve0();
+        let reserve1 = env.pair.get_reserve1();
+
+        assert_eq!(reserve0, token0amount - expected_output_amount);
+        assert_eq!(reserve1, token1amount + swap_amount);
+
+        assert_eq!(
+            env.token0.balance_of(&env.pair.address()),
+            token0amount - expected_output_amount
+        );
+        assert_eq!(
+            env.token1.balance_of(&env.pair.address()),
+            token1amount + swap_amount
+        );
+
+        let total_supply_token0 = env.token0.total_supply();
+        let total_supply_token1 = env.token1.total_supply();
+
+        assert_eq!(
+            env.token0.balance_of(&env.owner),
+            total_supply_token0 - token0amount + expected_output_amount
+        );
+        assert_eq!(
+            env.token1.balance_of(&env.owner),
+            total_supply_token1 - token1amount - swap_amount
+        );
+    }
+
+    #[test]
+    fn swap_test_cases() {
+        // Test cases: [swapAmount, token0Amount, token1Amount, expectedOutputAmount]
+        let swap_test_cases: Vec<(u64, u64, u64, u128)> = vec![
+            (1, 5, 10, 1662497915624478906),
+            (1, 10, 5, 453305446940074565),
+            (2, 5, 10, 2851015155847869602),
+            (2, 10, 5, 831248957812239453),
+            (1, 10, 10, 906610893880149131),
+            (1, 100, 100, 987158034397061298),
+            (1, 1000, 1000, 996006981039903216),
+        ];
+
+        for (i, (swap_amount, token0_amount, token1_amount, expected_output)) in
+            swap_test_cases.iter().enumerate()
+        {
+            let mut env = setup();
+            let swap_amount = expand_to_18_decimals(*swap_amount);
+            let token0amount = expand_to_18_decimals(*token0_amount);
+            let token1amount = expand_to_18_decimals(*token1_amount);
+            let expected_output_amount = U256::from(*expected_output);
+
+            add_liquidity(&mut env, token0amount, token1amount);
+            env.token0.transfer(&env.pair.address(), &swap_amount);
+
+            // Try with expectedOutputAmount + 1, should fail
+            let result = env.pair.try_swap(
+                U256::zero(),
+                expected_output_amount + U256::one(),
+                env.owner,
+                None,
+            );
+            assert!(result.is_err(), "Test case {} should fail with K error", i);
+
+            // Should succeed with exact expectedOutputAmount
+            env.pair
+                .swap(U256::zero(), expected_output_amount, env.owner, None);
+        }
+    }
+
+    #[test]
+    fn optimistic() {
+        // Test cases: [outputAmount, token0Amount, token1Amount, inputAmount]
+        // First 3 cases: given amountIn, amountOut = floor(amountIn * .997)
+        // Last case: given amountOut, amountIn = ceiling(amountOut / .997)
+        let optimistic_test_cases: Vec<(Option<u64>, u64, u64, Option<u64>, u128)> = vec![
+            (None, 5, 10, Some(1), 997000000000000000),
+            (None, 10, 5, Some(1), 997000000000000000),
+            (None, 5, 5, Some(1), 997000000000000000),
+            (Some(1), 5, 5, None, 1003009027081243732),
+        ];
+
+        for (i, (output_18, token0_amount, token1_amount, input_18, amount_val)) in
+            optimistic_test_cases.iter().enumerate()
+        {
+            let mut env = setup();
+            let token0amount = expand_to_18_decimals(*token0_amount);
+            let token1amount = expand_to_18_decimals(*token1_amount);
+
+            let (output_amount, input_amount) = if let Some(output) = output_18 {
+                (expand_to_18_decimals(*output), U256::from(*amount_val))
+            } else {
+                (U256::from(*amount_val), expand_to_18_decimals(input_18.unwrap()))
+            };
+
+            add_liquidity(&mut env, token0amount, token1amount);
+            env.token0.transfer(&env.pair.address(), &input_amount);
+
+            // Try with outputAmount + 1, should fail
+            let result = env.pair.try_swap(
+                output_amount + U256::one(),
+                U256::zero(),
+                env.owner,
+                None,
+            );
+            assert!(result.is_err(), "Test case {} should fail with K error", i);
+
+            // Should succeed with exact outputAmount
+            env.pair
+                .swap(output_amount, U256::zero(), env.owner, None);
+        }
     }
 }
