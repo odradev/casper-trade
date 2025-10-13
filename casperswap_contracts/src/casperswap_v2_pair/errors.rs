@@ -10,4 +10,6 @@ pub enum CasperswapV2PairError {
     NotInitialized = 20003,
     /// Insufficient liquidity minted.
     InsufficientLiquidityMinted = 20004,
+    /// Arithmetic overflow occurred.
+    Overflow = 20005,
 }

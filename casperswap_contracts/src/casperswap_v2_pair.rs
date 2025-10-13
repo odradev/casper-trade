@@ -1,11 +1,11 @@
 use odra::{casper_types::U256, prelude::*, ContractRef};
-use odra_modules::{
-    cep18_token::{Cep18, Cep18ContractRef},
-    erc20::Erc20ContractRef,
-};
+use odra_modules::cep18_token::{Cep18, Cep18ContractRef};
 
 use crate::{
-    casperswap_v2_pair::{errors::CasperswapV2PairError, events::Mint},
+    casperswap_v2_pair::{
+        errors::CasperswapV2PairError,
+        events::{Mint, Sync},
+    },
     factory::FactoryContractRef,
 };
 pub mod errors;
@@ -24,6 +24,8 @@ pub struct CasperswapV2Pair {
     pub reserve1: Var<U256>,
     pub k_last: Var<U256>,
     pub block_timestamp_last: Var<u64>,
+    pub price0_cumulative_last: Var<U256>,
+    pub price1_cumulative_last: Var<U256>,
 }
 
 /// Module implementation
@@ -74,14 +76,13 @@ impl CasperswapV2Pair {
         let amount0 = balance0 - reserve0;
         let amount1 = balance1 - reserve1;
 
-        let fee_on = self._mintFee(reserve0, reserve1);
+        let fee_on = self._mint_fee(reserve0, reserve1);
         let total_supply = self.total_supply();
         let minimum_liquidity = U256::from(MINIMUM_LIQUIDITY);
-
         let liquidity = if total_supply.is_zero() {
-            // permanently lock the first MINIMUM_LIQUIDITY tokens
+            // permanently lock the first MINIMUM_LIQUIDITY tokensp
             self.token.raw_mint(&zero_address, &minimum_liquidity);
-            (amount0 * amount1) - minimum_liquidity
+            (amount0 * amount1).integer_sqrt() - minimum_liquidity
         } else {
             (amount0 * total_supply / reserve0).min(amount1 * total_supply / reserve1)
         };
@@ -92,6 +93,7 @@ impl CasperswapV2Pair {
         }
 
         self.token.raw_mint(&to, &liquidity);
+        self._update(balance0, balance1, reserve0, reserve1);
 
         if fee_on {
             self.k_last.set(reserve0 * reserve1);
@@ -114,8 +116,52 @@ impl CasperswapV2Pair {
 }
 
 impl CasperswapV2Pair {
+    // TODO: Verify the soundness of this function
+    fn _update(&mut self, balance0: U256, balance1: U256, reserve0: U256, reserve1: U256) {
+        // Get current block timestamp
+        let block_timestamp = self.env().get_block_time();
+        let block_timestamp_last = self.block_timestamp_last.get_or_default();
+
+        // Calculate time elapsed (overflow is desired, so we use wrapping_sub)
+        let time_elapsed = block_timestamp.wrapping_sub(block_timestamp_last);
+
+        // Update price accumulators if time has elapsed and reserves exist
+        if time_elapsed > 0 && !reserve0.is_zero() && !reserve1.is_zero() {
+            // Calculate price0 = reserve1 / reserve0 (encoded as UQ112x112)
+            let price0 = self._uqdiv(reserve1, reserve0);
+            let price0_cumulative_last = self.price0_cumulative_last.get_or_default();
+            self.price0_cumulative_last
+                .set(price0_cumulative_last + (price0 * U256::from(time_elapsed)));
+
+            // Calculate price1 = reserve0 / reserve1 (encoded as UQ112x112)
+            let price1 = self._uqdiv(reserve0, reserve1);
+            let price1_cumulative_last = self.price1_cumulative_last.get_or_default();
+            self.price1_cumulative_last
+                .set(price1_cumulative_last + (price1 * U256::from(time_elapsed)));
+        }
+
+        // Update reserves
+        self.reserve0.set(balance0);
+        self.reserve1.set(balance1);
+        self.block_timestamp_last.set(block_timestamp);
+
+        // Emit Sync event
+        self.env().emit_event(Sync {
+            reserve0: balance0,
+            reserve1: balance1,
+        });
+    }
+
+    /// UQ112x112 division - equivalent to UQ112x112.encode(x).uqdiv(y)
+    fn _uqdiv(&self, x: U256, y: U256) -> U256 {
+        // UQ112x112 means we have 112 bits for integer part and 112 bits for fractional part
+        // So we multiply by 2^112 to get the fixed-point representation
+        let q112 = U256::from(2u64.pow(112));
+        (x * q112) / y
+    }
+
     // if fee is on, mint liquidity equivalent to 1/6th of the growth in sqrt(k)
-    fn _mintFee(&mut self, reserve0: U256, reserve1: U256) -> bool {
+    fn _mint_fee(&mut self, reserve0: U256, reserve1: U256) -> bool {
         let fee_to = self.factory().fee_to();
         let fee_on = fee_to.is_some();
 
@@ -125,7 +171,7 @@ impl CasperswapV2Pair {
             if !k_last.is_zero() {
                 let root_k = (reserve0 * reserve1).integer_sqrt();
                 let root_k_last = k_last.integer_sqrt();
-                if (root_k > root_k_last) {
+                if root_k > root_k_last {
                     let numerator = self.total_supply() * (root_k - root_k_last);
                     let denominator = root_k * 5 + root_k_last;
                     let liquidity = numerator / denominator;
@@ -206,7 +252,7 @@ mod tests {
                 name: "Sample Token A".to_string(),
                 symbol: "STA".to_string(),
                 decimals: 18,
-                initial_supply: U256::from(1000000u64),
+                initial_supply: expand_to_18_decimals(10000),
             },
         );
         let token1 = SampleTokenB::deploy(
@@ -215,7 +261,7 @@ mod tests {
                 name: "Sample Token B".to_string(),
                 symbol: "STB".to_string(),
                 decimals: 18,
-                initial_supply: U256::from(2000000u64),
+                initial_supply: expand_to_18_decimals(10000),
             },
         );
         let mut pair = CasperswapV2Pair::deploy(

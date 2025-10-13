@@ -104,17 +104,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
-name = "async-trait"
-version = "0.1.89"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9035ad2d096bed7955a320ee7e2230574d28fd3c3a0f186cbea1ff3c7eed5dbb"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.106",
-]
-
-[[package]]
 name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -277,6 +266,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "casper-client"
+version = "5.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb4938b81a6ecd44628be6b87a43cfb70bb10a5abe549a2dd22b544e980f5bc9"
+dependencies = [
+ "base16",
+ "base64 0.22.1",
+ "bytes",
+ "casper-types",
+ "flate2",
+ "hex-buffer-serde 0.4.0",
+ "humantime",
+ "itertools 0.12.1",
+ "jsonrpc-lite",
+ "num-traits",
+ "once_cell",
+ "rand 0.8.5",
+ "reqwest",
+ "schemars 0.8.22",
+ "serde",
+ "serde-map-to-array",
+ "serde_json",
+ "tar",
+ "thiserror",
+ "tokio",
+ "toml 0.8.23",
+ "uint",
+]
+
+[[package]]
 name = "casper-contract"
 version = "5.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -288,9 +307,8 @@ dependencies = [
 
 [[package]]
 name = "casper-contract-schema"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb2ec188665cd95c1c0a7af76873525b9831fe94b80d48a852968a3a7b346bcf"
+version = "0.6.0"
+source = "git+https://github.com/odradev/casper-contract-schema.git?branch=feature%2Fschema-deser#919e77d8bc8cfd9a9aad0bbf5b79946a3e4e42e7"
 dependencies = [
  "casper-types",
  "schemars 0.9.0",
@@ -577,15 +595,6 @@ dependencies = [
  "anstyle",
  "clap_lex",
  "strsim",
-]
-
-[[package]]
-name = "clap_complete"
-version = "4.5.58"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75bf0b32ad2e152de789bb635ea4d3078f6b838ad7974143e99b99f45a04af4a"
-dependencies = [
- "clap",
 ]
 
 [[package]]
@@ -951,7 +960,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1558,7 +1567,7 @@ checksum = "e04d7f318608d35d4b61ddd75cbdaee86b023ebe2bd5a66ee0915f0bf93095a9"
 dependencies = [
  "hermit-abi",
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1889,9 +1898,8 @@ dependencies = [
 
 [[package]]
 name = "odra"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d41a118066c4e2e49c236e6c9c93c2329ec500cde476cbfaa9ef2445ff4bc3dc"
+version = "2.4.1"
+source = "git+https://github.com/odradev/odra?branch=feature%2Fclient-fixes-for-shorts#08039f0188f6be07c870498f59bf4e0895a5cc88"
 dependencies = [
  "odra-casper-wasm-env",
  "odra-core",
@@ -1901,52 +1909,17 @@ dependencies = [
 
 [[package]]
 name = "odra-build"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e146cd60b82c73368f2a3f133e621322be0a296c4f9fa9fd0a9670ea9dfaa53"
+version = "2.4.1"
+source = "git+https://github.com/odradev/odra?branch=feature%2Fclient-fixes-for-shorts#08039f0188f6be07c870498f59bf4e0895a5cc88"
 dependencies = [
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "odra-casper-client"
-version = "3.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da35c66b640765f4740bf03be9e6e209e68ec9960d92c65c261e8c0f563ff1d1"
-dependencies = [
- "async-trait",
- "base16",
- "base64 0.22.1",
- "bytes",
- "casper-types",
- "clap",
- "clap_complete",
- "flate2",
- "hex-buffer-serde 0.4.0",
- "humantime",
- "itertools 0.12.1",
- "jsonrpc-lite",
- "num-traits",
- "once_cell",
- "rand 0.8.5",
- "reqwest",
- "schemars 0.8.22",
- "serde",
- "serde-map-to-array",
- "serde_json",
- "tar",
- "thiserror",
- "tokio",
- "toml 0.8.23",
- "uint",
 ]
 
 [[package]]
 name = "odra-casper-livenet-env"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b7bac3dd90f1c6d4acd7ec5eecb5f8fb95cdcd6891b6533f5195904f09d784f"
+version = "2.4.1"
+source = "git+https://github.com/odradev/odra?branch=feature%2Fclient-fixes-for-shorts#08039f0188f6be07c870498f59bf4e0895a5cc88"
 dependencies = [
  "anyhow",
  "blake2 0.10.6",
@@ -1961,15 +1934,14 @@ dependencies = [
 
 [[package]]
 name = "odra-casper-rpc-client"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04702bcc41974e328a59656a727ef892eb68c245e1e7772dc5213a56180e4854"
+version = "2.4.1"
+source = "git+https://github.com/odradev/odra?branch=feature%2Fclient-fixes-for-shorts#08039f0188f6be07c870498f59bf4e0895a5cc88"
 dependencies = [
  "base16",
+ "casper-client",
  "casper-types",
  "dotenv",
  "itertools 0.10.5",
- "odra-casper-client",
  "odra-core",
  "prettycli",
  "project-root",
@@ -1982,9 +1954,8 @@ dependencies = [
 
 [[package]]
 name = "odra-casper-test-vm"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a02799c69533e98bfc7206b310f96afc962639755769eb8af399e9ee9096ecb"
+version = "2.4.1"
+source = "git+https://github.com/odradev/odra?branch=feature%2Fclient-fixes-for-shorts#08039f0188f6be07c870498f59bf4e0895a5cc88"
 dependencies = [
  "casper-contract",
  "casper-engine-test-support",
@@ -1995,9 +1966,8 @@ dependencies = [
 
 [[package]]
 name = "odra-casper-wasm-env"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6f90f926a273e44c8d11d64926866f0f0392ef88f536a7162573a68ec4527e1"
+version = "2.4.1"
+source = "git+https://github.com/odradev/odra?branch=feature%2Fclient-fixes-for-shorts#08039f0188f6be07c870498f59bf4e0895a5cc88"
 dependencies = [
  "casper-contract",
  "ink_allocator",
@@ -2007,9 +1977,8 @@ dependencies = [
 
 [[package]]
 name = "odra-cli"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fe5442073d9619ec1f1ee69c40276d1c48573b01cb864127a6d9e31eb30572c"
+version = "2.4.1"
+source = "git+https://github.com/odradev/odra?branch=feature%2Fclient-fixes-for-shorts#08039f0188f6be07c870498f59bf4e0895a5cc88"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2030,9 +1999,8 @@ dependencies = [
 
 [[package]]
 name = "odra-core"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53e65795a7e930891be6c08fb2aaf837c7ad6f17c01d558dc972734a13a9989a"
+version = "2.4.1"
+source = "git+https://github.com/odradev/odra?branch=feature%2Fclient-fixes-for-shorts#08039f0188f6be07c870498f59bf4e0895a5cc88"
 dependencies = [
  "anyhow",
  "casper-event-standard",
@@ -2046,9 +2014,8 @@ dependencies = [
 
 [[package]]
 name = "odra-macros"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68ad4ea9f166bd6829abb3ef1e750056c8c42732d6b45ff1468e6b03e5ce3420"
+version = "2.4.1"
+source = "git+https://github.com/odradev/odra?branch=feature%2Fclient-fixes-for-shorts#08039f0188f6be07c870498f59bf4e0895a5cc88"
 dependencies = [
  "convert_case 0.5.0",
  "derive-try-from-ref",
@@ -2063,9 +2030,8 @@ dependencies = [
 
 [[package]]
 name = "odra-modules"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bc5527060b7e564034c71afc307c3c70c57bbdfbd502ab833fd997968eff466"
+version = "2.4.1"
+source = "git+https://github.com/odradev/odra?branch=feature%2Fclient-fixes-for-shorts#08039f0188f6be07c870498f59bf4e0895a5cc88"
 dependencies = [
  "base16",
  "base64 0.22.1",
@@ -2078,9 +2044,8 @@ dependencies = [
 
 [[package]]
 name = "odra-schema"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7e3a0408fb8d6355c7f688b1ee1e52e5b8531d3060ed333f1af80306487e6b3"
+version = "2.4.1"
+source = "git+https://github.com/odradev/odra?branch=feature%2Fclient-fixes-for-shorts#08039f0188f6be07c870498f59bf4e0895a5cc88"
 dependencies = [
  "casper-contract-schema",
  "casper-types",
@@ -2091,9 +2056,8 @@ dependencies = [
 
 [[package]]
 name = "odra-test"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f8937cb8911c1560da620409ca2194c59ab72b980e9678b54ebcbfcd8918cc2"
+version = "2.4.1"
+source = "git+https://github.com/odradev/odra?branch=feature%2Fclient-fixes-for-shorts#08039f0188f6be07c870498f59bf4e0895a5cc88"
 dependencies = [
  "odra-casper-test-vm",
  "odra-core",
@@ -2102,9 +2066,8 @@ dependencies = [
 
 [[package]]
 name = "odra-vm"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48adbdf9f9f260919a97adaa23cd4aeee0206a560f3693a544d66d34679a24cf"
+version = "2.4.1"
+source = "git+https://github.com/odradev/odra?branch=feature%2Fclient-fixes-for-shorts#08039f0188f6be07c870498f59bf4e0895a5cc88"
 dependencies = [
  "anyhow",
  "backtrace",
@@ -2592,7 +2555,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3097,7 +3060,7 @@ dependencies = [
  "getrandom 0.3.3",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3633,7 +3596,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
