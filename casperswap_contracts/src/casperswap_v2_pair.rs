@@ -9,7 +9,7 @@ use crate::{
     casperswap_callee::CasperswapCalleeContractRef,
     casperswap_v2_pair::{
         errors::CasperswapV2PairError,
-        events::{Mint, Swap, Sync},
+        events::{Burn, Mint, Swap, Sync},
     },
     factory::FactoryContractRef,
     utils::zero_address,
@@ -20,7 +20,7 @@ pub mod events;
 pub const MINIMUM_LIQUIDITY: u64 = 1000;
 
 /// CasperswapV2Pair contract - implementation based on Uniswap V2
-#[odra::module(events = [Mint, Swap, Sync])]
+#[odra::module(events = [Mint, Burn, Swap, Sync])]
 pub struct CasperswapV2Pair {
     pub token: SubModule<Cep18>,
     pub factory: Var<Address>,
@@ -111,6 +111,64 @@ impl CasperswapV2Pair {
             amount0,
             amount1,
         });
+    }
+
+    #[odra(non_reentrant)]
+    pub fn burn(&mut self, to: Address) -> (U256, U256) {
+        // Get reserves
+        let reserve0 = self.reserve0.get_or_default();
+        let reserve1 = self.reserve1.get_or_default();
+
+        // Get current balances
+        let balance0 = self.token0().balance_of(&self.env().self_address());
+        let balance1 = self.token1().balance_of(&self.env().self_address());
+
+        // Get liquidity (LP tokens held by this contract)
+        let liquidity = self.balance_of(&self.env().self_address());
+
+        // Mint fee if applicable
+        let fee_on = self._mint_fee(reserve0, reserve1);
+        let total_supply = self.total_supply();
+
+        // Calculate amounts to return using balances ensures pro-rata distribution
+        let amount0 = liquidity * balance0 / total_supply;
+        let amount1 = liquidity * balance1 / total_supply;
+
+        // Require both amounts > 0
+        if amount0.is_zero() || amount1.is_zero() {
+            self.env()
+                .revert(CasperswapV2PairError::InsufficientLiquidityBurned);
+        }
+
+        // Burn liquidity tokens
+        let self_address = self.env().self_address();
+        self.token.raw_burn(&self_address, &liquidity);
+
+        // Transfer tokens to recipient
+        self.token0().transfer(&to, &amount0);
+        self.token1().transfer(&to, &amount1);
+
+        // Get new balances
+        let balance0 = self.token0().balance_of(&self.env().self_address());
+        let balance1 = self.token1().balance_of(&self.env().self_address());
+
+        // Update reserves
+        self._update(balance0, balance1, reserve0, reserve1);
+
+        // Update kLast if fee is on
+        if fee_on {
+            self.k_last.set(reserve0 * reserve1);
+        }
+
+        // Emit Burn event
+        self.env().emit_event(Burn {
+            sender: self.env().caller(),
+            amount0,
+            amount1,
+            to,
+        });
+
+        (amount0, amount1)
     }
 
     #[odra(non_reentrant)]
@@ -512,6 +570,43 @@ mod tests {
     }
 
     #[test]
+    fn burn() {
+        let mut env = setup();
+        let token0amount = expand_to_18_decimals(3);
+        let token1amount = expand_to_18_decimals(3);
+
+        add_liquidity(&mut env, token0amount, token1amount);
+
+        let expected_liquidity = expand_to_18_decimals(3);
+        // Transfer LP tokens to pair for burning
+        env.odra_env.set_caller(env.alice);
+        env.pair.transfer(
+            &env.pair.address(),
+            &(expected_liquidity - U256::from(MINIMUM_LIQUIDITY)),
+        );
+
+        env.odra_env.set_caller(env.owner);
+        let (_amount0, _amount1) = env.pair.burn(env.owner);
+
+        assert_eq!(env.pair.balance_of(&env.owner), U256::zero());
+        assert_eq!(env.pair.total_supply(), U256::from(MINIMUM_LIQUIDITY));
+        assert_eq!(env.token0.balance_of(&env.pair.address()), U256::from(1000));
+        assert_eq!(env.token1.balance_of(&env.pair.address()), U256::from(1000));
+
+        let total_supply_token0 = env.token0.total_supply();
+        let total_supply_token1 = env.token1.total_supply();
+
+        assert_eq!(
+            env.token0.balance_of(&env.owner),
+            total_supply_token0 - U256::from(1000)
+        );
+        assert_eq!(
+            env.token1.balance_of(&env.owner),
+            total_supply_token1 - U256::from(1000)
+        );
+    }
+
+    #[test]
     fn swap_test_cases() {
         // Test cases: [swapAmount, token0Amount, token1Amount, expectedOutputAmount]
         let swap_test_cases: Vec<(u64, u64, u64, u128)> = vec![
@@ -573,24 +668,23 @@ mod tests {
             let (output_amount, input_amount) = if let Some(output) = output_18 {
                 (expand_to_18_decimals(*output), U256::from(*amount_val))
             } else {
-                (U256::from(*amount_val), expand_to_18_decimals(input_18.unwrap()))
+                (
+                    U256::from(*amount_val),
+                    expand_to_18_decimals(input_18.unwrap()),
+                )
             };
 
             add_liquidity(&mut env, token0amount, token1amount);
             env.token0.transfer(&env.pair.address(), &input_amount);
 
             // Try with outputAmount + 1, should fail
-            let result = env.pair.try_swap(
-                output_amount + U256::one(),
-                U256::zero(),
-                env.owner,
-                None,
-            );
+            let result =
+                env.pair
+                    .try_swap(output_amount + U256::one(), U256::zero(), env.owner, None);
             assert!(result.is_err(), "Test case {} should fail with K error", i);
 
             // Should succeed with exact outputAmount
-            env.pair
-                .swap(output_amount, U256::zero(), env.owner, None);
+            env.pair.swap(output_amount, U256::zero(), env.owner, None);
         }
     }
 }

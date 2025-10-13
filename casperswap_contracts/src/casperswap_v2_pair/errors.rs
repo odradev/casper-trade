@@ -22,4 +22,6 @@ pub enum CasperswapV2PairError {
     InsufficientInputAmount = 20009,
     /// K invariant check failed.
     K = 20010,
+    /// Insufficient liquidity burned.
+    InsufficientLiquidityBurned = 20011,
 }

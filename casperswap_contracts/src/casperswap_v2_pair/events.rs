@@ -26,6 +26,7 @@ pub struct Burn {
     pub sender: Address,
     pub amount0: U256,
     pub amount1: U256,
+    pub to: Address,
 }
 
 #[odra::event]
