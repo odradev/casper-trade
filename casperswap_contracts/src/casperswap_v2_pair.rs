@@ -273,6 +273,27 @@ impl CasperswapV2Pair {
     pub fn get_reserve1(&self) -> U256 {
         self.reserve1.get_or_default()
     }
+
+    pub fn get_block_timestamp_last(&self) -> u64 {
+        self.block_timestamp_last.get_or_default()
+    }
+
+    pub fn get_price0_cumulative_last(&self) -> U256 {
+        self.price0_cumulative_last.get_or_default()
+    }
+
+    pub fn get_price1_cumulative_last(&self) -> U256 {
+        self.price1_cumulative_last.get_or_default()
+    }
+
+    #[odra(non_reentrant)]
+    pub fn sync(&mut self) {
+        let balance0 = self.token0().balance_of(&self.env().self_address());
+        let balance1 = self.token1().balance_of(&self.env().self_address());
+        let reserve0 = self.reserve0.get_or_default();
+        let reserve1 = self.reserve1.get_or_default();
+        self._update(balance0, balance1, reserve0, reserve1);
+    }
 }
 
 impl CasperswapV2Pair {
@@ -316,7 +337,7 @@ impl CasperswapV2Pair {
     fn _uqdiv(&self, x: U256, y: U256) -> U256 {
         // UQ112x112 means we have 112 bits for integer part and 112 bits for fractional part
         // So we multiply by 2^112 to get the fixed-point representation
-        let q112 = U256::from(2u64.pow(112));
+        let q112 = U256::from(2u128).pow(U256::from(112));
         (x * q112) / y
     }
 
@@ -380,7 +401,7 @@ mod tests {
             SampleTokenA, SampleTokenAHostRef, SampleTokenAInitArgs, SampleTokenB,
             SampleTokenBHostRef, SampleTokenBInitArgs,
         },
-        utils::expand_to_18_decimals,
+        utils::{encode_price, expand_to_18_decimals},
     };
 
     use super::*;
@@ -765,5 +786,82 @@ mod tests {
             env.token1.balance_of(&env.pair.address()),
             U256::from(1000) + U256::from(250000187312969 as u128)
         );
+    }
+
+    #[test]
+    fn price_cumulative_last() {
+        let mut env = setup(true);
+        let token0amount = expand_to_18_decimals(3);
+        let token1amount = expand_to_18_decimals(3);
+
+        add_liquidity(&mut env, token0amount, token1amount);
+
+        // Get initial block timestamp
+        let block_timestamp = env.pair.get_block_timestamp_last();
+
+        // Initial price accumulators should be 0 because no time has elapsed yet
+        assert_eq!(env.pair.get_price0_cumulative_last(), U256::zero());
+        assert_eq!(env.pair.get_price1_cumulative_last(), U256::zero());
+
+        // Advance time by 16 seconds (1 block in Casper) and sync
+        env.odra_env.advance_block_time(16);
+        env.pair.sync();
+
+        // Calculate expected initial price (3:3 ratio = 1:1)
+        let (initial_price0, initial_price1) = encode_price(token0amount, token1amount);
+
+        // After 16 seconds with 1:1 price, accumulators should be initialPrice * 16
+        assert_eq!(
+            env.pair.get_price0_cumulative_last(),
+            initial_price0 * U256::from(16)
+        );
+        assert_eq!(
+            env.pair.get_price1_cumulative_last(),
+            initial_price1 * U256::from(16)
+        );
+        assert_eq!(env.pair.get_block_timestamp_last(), block_timestamp + 16);
+
+        // Swap to change price: add 3 token0, get 1 token1
+        // New reserves will be 6 token0, 2 token1
+        let swap_amount = expand_to_18_decimals(3);
+        env.token0.transfer(&env.pair.address(), &swap_amount);
+
+        // Advance to block_timestamp + 160 (10 blocks later = 160 seconds total)
+        env.odra_env.advance_block_time(144); // 160 - 16 = 144 more seconds
+        env.pair
+            .swap(U256::zero(), expand_to_18_decimals(1), env.owner, None);
+
+        // During the 144 seconds (from t=16 to t=160), price was still 1:1
+        // So accumulators increase by initialPrice * 144
+        // Total: initialPrice * 16 + initialPrice * 144 = initialPrice * 160
+        assert_eq!(
+            env.pair.get_price0_cumulative_last(),
+            initial_price0 * U256::from(160)
+        );
+        assert_eq!(
+            env.pair.get_price1_cumulative_last(),
+            initial_price1 * U256::from(160)
+        );
+        assert_eq!(env.pair.get_block_timestamp_last(), block_timestamp + 160);
+
+        // Advance to block_timestamp + 320 (another 10 blocks = 160 seconds)
+        env.odra_env.advance_block_time(160);
+        env.pair.sync();
+
+        // New price after swap: 6:2 ratio
+        let (new_price0, new_price1) =
+            encode_price(expand_to_18_decimals(6), expand_to_18_decimals(2));
+
+        // During the 160 seconds (from t=160 to t=320), price was 6:2
+        // accumulators = (initialPrice * 160) + (newPrice * 160)
+        assert_eq!(
+            env.pair.get_price0_cumulative_last(),
+            initial_price0 * U256::from(160) + new_price0 * U256::from(160)
+        );
+        assert_eq!(
+            env.pair.get_price1_cumulative_last(),
+            initial_price1 * U256::from(160) + new_price1 * U256::from(160)
+        );
+        assert_eq!(env.pair.get_block_timestamp_last(), block_timestamp + 320);
     }
 }
