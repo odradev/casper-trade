@@ -266,6 +266,15 @@ impl CasperswapV2Pair {
         });
     }
 
+    /// Returns reserves and last block timestamp as a tuple
+    pub fn get_reserves(&self) -> (U256, U256, u64) {
+        (
+            self.reserve0.get_or_default(),
+            self.reserve1.get_or_default(),
+            self.block_timestamp_last.get_or_default(),
+        )
+    }
+
     pub fn get_reserve0(&self) -> U256 {
         self.reserve0.get_or_default()
     }
@@ -286,6 +295,25 @@ impl CasperswapV2Pair {
         self.price1_cumulative_last.get_or_default()
     }
 
+    /// Force balances to match reserves by sending excess tokens to recipient
+    #[odra(non_reentrant)]
+    pub fn skim(&mut self, to: Address) {
+        let reserve0 = self.reserve0.get_or_default();
+        let reserve1 = self.reserve1.get_or_default();
+        
+        let balance0 = self.token0().balance_of(&self.env().self_address());
+        let balance1 = self.token1().balance_of(&self.env().self_address());
+        
+        // Transfer any excess balance (balance - reserve) to the recipient
+        if balance0 > reserve0 {
+            self.token0().transfer(&to, &(balance0 - reserve0));
+        }
+        if balance1 > reserve1 {
+            self.token1().transfer(&to, &(balance1 - reserve1));
+        }
+    }
+
+    /// Force reserves to match balances
     #[odra(non_reentrant)]
     pub fn sync(&mut self) {
         let balance0 = self.token0().balance_of(&self.env().self_address());
@@ -863,5 +891,77 @@ mod tests {
             initial_price1 * U256::from(160) + new_price1 * U256::from(160)
         );
         assert_eq!(env.pair.get_block_timestamp_last(), block_timestamp + 320);
+    }
+
+    #[test]
+    fn test_skim() {
+        let mut env = setup(true);
+        let token0amount = expand_to_18_decimals(3);
+        let token1amount = expand_to_18_decimals(3);
+
+        // Add liquidity normally
+        add_liquidity(&mut env, token0amount, token1amount);
+
+        // Get reserves
+        let (reserve0, reserve1, _) = env.pair.get_reserves();
+        assert_eq!(reserve0, token0amount);
+        assert_eq!(reserve1, token1amount);
+
+        // Accidentally send extra tokens to the pair contract (simulating user error)
+        let extra_token0 = expand_to_18_decimals(1);
+        let extra_token1 = expand_to_18_decimals(2);
+        env.token0.transfer(&env.pair.address(), &extra_token0);
+        env.token1.transfer(&env.pair.address(), &extra_token1);
+
+        // Verify balances are higher than reserves
+        let balance0 = env.token0.balance_of(&env.pair.address());
+        let balance1 = env.token1.balance_of(&env.pair.address());
+        assert_eq!(balance0, token0amount + extra_token0);
+        assert_eq!(balance1, token1amount + extra_token1);
+
+        // But reserves haven't changed
+        let (reserve0_after, reserve1_after, _) = env.pair.get_reserves();
+        assert_eq!(reserve0_after, reserve0);
+        assert_eq!(reserve1_after, reserve1);
+
+        // Skim the excess tokens to bob
+        let bob_balance0_before = env.token0.balance_of(&env.bob);
+        let bob_balance1_before = env.token1.balance_of(&env.bob);
+
+        env.pair.skim(env.bob);
+
+        // Bob should receive the excess
+        assert_eq!(
+            env.token0.balance_of(&env.bob),
+            bob_balance0_before + extra_token0
+        );
+        assert_eq!(
+            env.token1.balance_of(&env.bob),
+            bob_balance1_before + extra_token1
+        );
+
+        // Pair balances should now equal reserves
+        assert_eq!(env.token0.balance_of(&env.pair.address()), reserve0);
+        assert_eq!(env.token1.balance_of(&env.pair.address()), reserve1);
+    }
+
+    #[test]
+    fn test_get_reserves() {
+        let mut env = setup(true);
+        let token0amount = expand_to_18_decimals(5);
+        let token1amount = expand_to_18_decimals(10);
+
+        add_liquidity(&mut env, token0amount, token1amount);
+
+        // Test the combined getReserves function
+        let (reserve0, reserve1, timestamp) = env.pair.get_reserves();
+        
+        assert_eq!(reserve0, token0amount);
+        assert_eq!(reserve1, token1amount);
+
+        // Verify it matches individual getters
+        assert_eq!(reserve0, env.pair.get_reserve0());
+        assert_eq!(reserve1, env.pair.get_reserve1());
+        assert_eq!(timestamp, env.pair.get_block_timestamp_last());
     }
 }
