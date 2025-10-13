@@ -12,4 +12,14 @@ pub enum CasperswapV2PairError {
     InsufficientLiquidityMinted = 20004,
     /// Arithmetic overflow occurred.
     Overflow = 20005,
+    /// Insufficient output amount.
+    InsufficientOutputAmount = 20006,
+    /// Insufficient liquidity.
+    InsufficientLiquidity = 20007,
+    /// Invalid recipient address.
+    InvalidTo = 20008,
+    /// Insufficient input amount.
+    InsufficientInputAmount = 20009,
+    /// K invariant check failed.
+    K = 20010,
 }

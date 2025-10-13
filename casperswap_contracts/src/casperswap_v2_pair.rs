@@ -1,12 +1,18 @@
-use odra::{casper_types::U256, prelude::*, ContractRef};
+use odra::{
+    casper_types::{bytesrepr::Bytes, U256},
+    prelude::*,
+    ContractRef,
+};
 use odra_modules::cep18_token::{Cep18, Cep18ContractRef};
 
 use crate::{
+    casperswap_callee::CasperswapCalleeContractRef,
     casperswap_v2_pair::{
         errors::CasperswapV2PairError,
-        events::{Mint, Sync},
+        events::{Mint, Swap, Sync},
     },
     factory::FactoryContractRef,
+    utils::zero_address,
 };
 pub mod errors;
 pub mod events;
@@ -14,7 +20,7 @@ pub mod events;
 pub const MINIMUM_LIQUIDITY: u64 = 1000;
 
 /// CasperswapV2Pair contract - implementation based on Uniswap V2
-#[odra::module(events = [Mint])]
+#[odra::module(events = [Mint, Swap, Sync])]
 pub struct CasperswapV2Pair {
     pub token: SubModule<Cep18>,
     pub factory: Var<Address>,
@@ -65,9 +71,10 @@ impl CasperswapV2Pair {
         self.token1.set(token1);
     }
 
+    #[odra(non_reentrant)]
     pub fn mint(&mut self, to: Address) {
         // TODO: below should be zero address or some kind of locking mechanism
-        let zero_address = self.env().self_address();
+        let zero_address = zero_address();
         let balance0 = self.token0().balance_of(&self.env().self_address());
         let balance1 = self.token1().balance_of(&self.env().self_address());
         let reserve0 = self.reserve0.get_or_default();
@@ -103,6 +110,99 @@ impl CasperswapV2Pair {
             sender: self.env().caller(),
             amount0,
             amount1,
+        });
+    }
+
+    #[odra(non_reentrant)]
+    pub fn swap(&mut self, amount0_out: U256, amount1_out: U256, to: Address, data: Option<Bytes>) {
+        // Require at least one output amount to be > 0
+        if amount0_out.is_zero() && amount1_out.is_zero() {
+            self.env()
+                .revert(CasperswapV2PairError::InsufficientOutputAmount);
+        }
+
+        // Get reserves
+        let reserve0 = self.reserve0.get_or_default();
+        let reserve1 = self.reserve1.get_or_default();
+
+        // Require outputs are less than reserves
+        if amount0_out >= reserve0 || amount1_out >= reserve1 {
+            self.env()
+                .revert(CasperswapV2PairError::InsufficientLiquidity);
+        }
+
+        // Get token addresses
+        let token0_addr = self
+            .token0
+            .get_or_revert_with(CasperswapV2PairError::NotInitialized);
+        let token1_addr = self
+            .token1
+            .get_or_revert_with(CasperswapV2PairError::NotInitialized);
+
+        // Validate recipient is not one of the token addresses
+        if to == token0_addr || to == token1_addr {
+            self.env().revert(CasperswapV2PairError::InvalidTo);
+        }
+
+        // Optimistically transfer tokens
+        if !amount0_out.is_zero() {
+            self.token0().transfer(&to, &amount0_out);
+        }
+        if !amount1_out.is_zero() {
+            self.token1().transfer(&to, &amount1_out);
+        }
+
+        // Call the callback if data is provided
+        if let Some(callback_data) = data {
+            let callee = CasperswapCalleeContractRef::new(self.env(), to);
+            callee.casperswap_call(self.env().caller(), amount0_out, amount1_out, callback_data);
+        }
+
+        // Get new balances
+        let balance0 = self.token0().balance_of(&self.env().self_address());
+        let balance1 = self.token1().balance_of(&self.env().self_address());
+
+        // Calculate input amounts
+        let amount0_in = if balance0 > reserve0 - amount0_out {
+            balance0 - (reserve0 - amount0_out)
+        } else {
+            U256::zero()
+        };
+
+        let amount1_in = if balance1 > reserve1 - amount1_out {
+            balance1 - (reserve1 - amount1_out)
+        } else {
+            U256::zero()
+        };
+
+        // Require at least one input amount > 0
+        if amount0_in.is_zero() && amount1_in.is_zero() {
+            self.env()
+                .revert(CasperswapV2PairError::InsufficientInputAmount);
+        }
+
+        // Check K invariant with 0.3% fee
+        // balance * 1000 - amount_in * 3 (0.3% fee)
+        let balance0_adjusted = balance0 * U256::from(1000) - amount0_in * U256::from(3);
+        let balance1_adjusted = balance1 * U256::from(1000) - amount1_in * U256::from(3);
+        let k_adjusted = balance0_adjusted * balance1_adjusted;
+        let k_original = reserve0 * reserve1 * U256::from(1000).pow(U256::from(2));
+
+        if k_adjusted < k_original {
+            self.env().revert(CasperswapV2PairError::K);
+        }
+
+        // Update reserves
+        self._update(balance0, balance1, reserve0, reserve1);
+
+        // Emit Swap event
+        self.env().emit_event(Swap {
+            sender: self.env().caller(),
+            amount0_in,
+            amount1_in,
+            amount0_out,
+            amount1_out,
+            to,
         });
     }
 
@@ -234,6 +334,7 @@ mod tests {
         pub pair: CasperswapV2PairHostRef,
         pub token0: SampleTokenAHostRef,
         pub token1: SampleTokenBHostRef,
+        pub owner: Address,
         pub alice: Address,
         pub bob: Address,
     }
@@ -271,6 +372,7 @@ mod tests {
             },
         );
         pair.initialize(token0.address(), token1.address());
+        let owner = env.get_account(0);
         let alice = env.get_account(1);
         let bob = env.get_account(2);
         PairEnv {
@@ -278,13 +380,20 @@ mod tests {
             pair,
             token0,
             token1,
+            owner,
             alice,
             bob,
         }
     }
 
+    fn add_liquidity(env: &mut PairEnv, token0amount: U256, token1amount: U256) {
+        env.token0.transfer(&env.pair.address(), &token0amount);
+        env.token1.transfer(&env.pair.address(), &token1amount);
+        env.pair.mint(env.alice);
+    }
+
     #[test]
-    fn test_pair_init() {
+    fn mint() {
         let mut env = setup();
         let token0amount = expand_to_18_decimals(1);
         let token1amount = expand_to_18_decimals(4);
@@ -309,9 +418,53 @@ mod tests {
             env.token1.balance_of(&env.pair.address()),
             U256::from(token1amount)
         );
+
         let reserve0 = env.pair.get_reserve0();
         let reserve1 = env.pair.get_reserve1();
         assert_eq!(reserve0, U256::from(token0amount));
         assert_eq!(reserve1, U256::from(token1amount));
+    }
+
+    #[test]
+    fn swap_token0() {
+        let mut env = setup();
+        let token0amount = expand_to_18_decimals(1);
+        let token1amount = expand_to_18_decimals(4);
+
+        add_liquidity(&mut env, token0amount, token1amount);
+
+        let swap_amount = expand_to_18_decimals(1);
+        let expected_output_amount = U256::from(1662497915624478906 as u128);
+
+        env.token0.transfer(&env.pair.address(), &swap_amount);
+        env.pair
+            .swap(U256::zero(), expected_output_amount, env.owner, None);
+
+        let reserve0 = env.pair.get_reserve0();
+        let reserve1 = env.pair.get_reserve1();
+
+        assert_eq!(reserve0, token0amount + swap_amount);
+        assert_eq!(reserve1, token1amount - expected_output_amount);
+
+        assert_eq!(
+            env.token0.balance_of(&env.pair.address()),
+            token0amount + swap_amount
+        );
+        assert_eq!(
+            env.token1.balance_of(&env.pair.address()),
+            token1amount - expected_output_amount
+        );
+
+        let total_supply_token0 = env.token0.total_supply();
+        let total_supply_token1 = env.token1.total_supply();
+
+        assert_eq!(
+            env.token0.balance_of(&env.owner),
+            total_supply_token0 - token0amount - swap_amount
+        );
+        assert_eq!(
+            env.token1.balance_of(&env.owner),
+            total_supply_token1 - token1amount + expected_output_amount
+        );
     }
 }
