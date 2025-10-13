@@ -100,7 +100,6 @@ impl DeployScript for ContractsDeployScript {
             cspr!(500),
         )?;
 
-        
         println!("\nDeployment completed successfully!");
         println!("Use 'create-pair' scenario to create trading pairs.");
 

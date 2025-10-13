@@ -19,12 +19,8 @@ impl ScenarioMetadata for MintTokens {
 impl Scenario for MintTokens {
     fn args(&self) -> Vec<CommandArg> {
         vec![
-            CommandArg::new(
-                "recipient",
-                "Address of the recipient",
-                NamedCLType::String,
-            )
-            .required(),
+            CommandArg::new("recipient", "Address of the recipient", NamedCLType::String)
+                .required(),
             CommandArg::new(
                 "amount",
                 "Amount of tokens to mint (in base units, will be multiplied by 10^18)",
@@ -43,21 +39,19 @@ impl Scenario for MintTokens {
         env.set_gas(50_000_000_000);
 
         // Get the token contract
-        let mut token = container.contract_ref::<SampleTokenA>(
-            env,
-            Some("SampleTokenA".to_string()),
-        )?;
+        let mut token =
+            container.contract_ref::<SampleTokenA>(env, Some("SampleTokenA".to_string()))?;
 
         // Get args
         let recipient_str = args.get_single::<String>("recipient")?;
         let amount_base = args.get_single::<u64>("amount")?;
 
         // Parse recipient address
-        let recipient = recipient_str.parse::<Address>().map_err(|_| {
-            Error::OdraError {
+        let recipient = recipient_str
+            .parse::<Address>()
+            .map_err(|_| Error::OdraError {
                 message: "Invalid recipient address format".to_string(),
-            }
-        })?;
+            })?;
 
         // Convert to wei (multiply by 10^18)
         let amount = U256::from(amount_base) * U256::exp10(18);
@@ -87,4 +81,3 @@ impl Scenario for MintTokens {
         Ok(())
     }
 }
-

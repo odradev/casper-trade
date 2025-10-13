@@ -300,10 +300,10 @@ impl CasperswapV2Pair {
     pub fn skim(&mut self, to: Address) {
         let reserve0 = self.reserve0.get_or_default();
         let reserve1 = self.reserve1.get_or_default();
-        
+
         let balance0 = self.token0().balance_of(&self.env().self_address());
         let balance1 = self.token1().balance_of(&self.env().self_address());
-        
+
         // Transfer any excess balance (balance - reserve) to the recipient
         if balance0 > reserve0 {
             self.token0().transfer(&to, &(balance0 - reserve0));
@@ -955,7 +955,7 @@ mod tests {
 
         // Test the combined getReserves function
         let (reserve0, reserve1, timestamp) = env.pair.get_reserves();
-        
+
         assert_eq!(reserve0, token0amount);
         assert_eq!(reserve1, token1amount);
 

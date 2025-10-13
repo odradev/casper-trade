@@ -17,18 +17,9 @@ impl ScenarioMetadata for CreatePair {
 impl Scenario for CreatePair {
     fn args(&self) -> Vec<CommandArg> {
         vec![
-            CommandArg::new(
-                "token0",
-                "Address of the first token",
-                NamedCLType::String,
-            )
-            .required(),
-            CommandArg::new(
-                "token1",
-                "Address of the second token",
-                NamedCLType::String,
-            )
-            .required(),
+            CommandArg::new("token0", "Address of the first token", NamedCLType::String).required(),
+            CommandArg::new("token1", "Address of the second token", NamedCLType::String)
+                .required(),
         ]
     }
 
@@ -47,12 +38,16 @@ impl Scenario for CreatePair {
         let token1_str = args.get_single::<String>("token1")?;
 
         // Parse addresses
-        let token0 = token0_str.parse::<Address>().map_err(|_| Error::OdraError {
-            message: "Invalid token0 address format".to_string(),
-        })?;
-        let token1 = token1_str.parse::<Address>().map_err(|_| Error::OdraError {
-            message: "Invalid token1 address format".to_string(),
-        })?;
+        let token0 = token0_str
+            .parse::<Address>()
+            .map_err(|_| Error::OdraError {
+                message: "Invalid token0 address format".to_string(),
+            })?;
+        let token1 = token1_str
+            .parse::<Address>()
+            .map_err(|_| Error::OdraError {
+                message: "Invalid token1 address format".to_string(),
+            })?;
 
         // Ensure token0 < token1 (Uniswap V2 convention)
         let (token0, token1) = if format!("{:?}", token0) < format!("{:?}", token1) {
@@ -73,4 +68,3 @@ impl Scenario for CreatePair {
         Ok(())
     }
 }
-
