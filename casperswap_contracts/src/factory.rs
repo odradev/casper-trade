@@ -17,4 +17,8 @@ impl Factory {
     pub fn fee_to(&self) -> Option<Address> {
         self.fee_to.get().unwrap_or_revert(self)
     }
+
+    pub fn set_fee_to(&mut self, fee_to: Option<Address>) {
+        self.fee_to.set(fee_to);
+    }
 }

@@ -103,7 +103,8 @@ impl CasperswapV2Pair {
         self._update(balance0, balance1, reserve0, reserve1);
 
         if fee_on {
-            self.k_last.set(reserve0 * reserve1);
+            // k_last should be set to the updated reserves, which are balances.
+            self.k_last.set(balance0 * balance1);
         }
 
         self.env().emit_event(Mint {
@@ -157,7 +158,8 @@ impl CasperswapV2Pair {
 
         // Update kLast if fee is on
         if fee_on {
-            self.k_last.set(reserve0 * reserve1);
+            // k_last should be set to the updated reserves, which are balances.
+            self.k_last.set(balance0 * balance1);
         }
 
         // Emit Burn event
@@ -397,12 +399,15 @@ mod tests {
         pub bob: Address,
     }
 
-    fn setup() -> PairEnv {
+    fn setup(fee_on: bool) -> PairEnv {
         let env = odra_test::env();
+        let owner = env.get_account(0);
+        let alice = env.get_account(1);
+        let bob = env.get_account(2);
         let factory = Factory::deploy(
             &env,
             FactoryInitArgs {
-                fee_to: Some(env.get_account(0)),
+                fee_to: if fee_on { Some(bob) } else { None },
             },
         );
         let token0 = SampleTokenA::deploy(
@@ -430,9 +435,6 @@ mod tests {
             },
         );
         pair.initialize(token0.address(), token1.address());
-        let owner = env.get_account(0);
-        let alice = env.get_account(1);
-        let bob = env.get_account(2);
         PairEnv {
             odra_env: env,
             pair,
@@ -452,7 +454,7 @@ mod tests {
 
     #[test]
     fn mint() {
-        let mut env = setup();
+        let mut env = setup(true);
         let token0amount = expand_to_18_decimals(1);
         let token1amount = expand_to_18_decimals(4);
 
@@ -485,7 +487,7 @@ mod tests {
 
     #[test]
     fn swap_token0() {
-        let mut env = setup();
+        let mut env = setup(true);
         let token0amount = expand_to_18_decimals(5);
         let token1amount = expand_to_18_decimals(10);
 
@@ -528,7 +530,7 @@ mod tests {
 
     #[test]
     fn swap_token1() {
-        let mut env = setup();
+        let mut env = setup(true);
         let token0amount = expand_to_18_decimals(5);
         let token1amount = expand_to_18_decimals(10);
 
@@ -571,7 +573,7 @@ mod tests {
 
     #[test]
     fn burn() {
-        let mut env = setup();
+        let mut env = setup(true);
         let token0amount = expand_to_18_decimals(3);
         let token1amount = expand_to_18_decimals(3);
 
@@ -622,7 +624,7 @@ mod tests {
         for (i, (swap_amount, token0_amount, token1_amount, expected_output)) in
             swap_test_cases.iter().enumerate()
         {
-            let mut env = setup();
+            let mut env = setup(true);
             let swap_amount = expand_to_18_decimals(*swap_amount);
             let token0amount = expand_to_18_decimals(*token0_amount);
             let token1amount = expand_to_18_decimals(*token1_amount);
@@ -661,7 +663,7 @@ mod tests {
         for (i, (output_18, token0_amount, token1_amount, input_18, amount_val)) in
             optimistic_test_cases.iter().enumerate()
         {
-            let mut env = setup();
+            let mut env = setup(true);
             let token0amount = expand_to_18_decimals(*token0_amount);
             let token1amount = expand_to_18_decimals(*token1_amount);
 
@@ -686,5 +688,82 @@ mod tests {
             // Should succeed with exact outputAmount
             env.pair.swap(output_amount, U256::zero(), env.owner, None);
         }
+    }
+
+    #[test]
+    fn fee_to_off() {
+        let mut env = setup(false);
+        let token0amount = expand_to_18_decimals(1000);
+        let token1amount = expand_to_18_decimals(1000);
+
+        add_liquidity(&mut env, token0amount, token1amount);
+
+        let swap_amount = expand_to_18_decimals(1);
+        let expected_output_amount = U256::from(996006981039903216 as u128);
+        env.token1.transfer(&env.pair.address(), &swap_amount);
+        env.pair
+            .swap(expected_output_amount, U256::zero(), env.owner, None);
+
+        let expected_liquidity = expand_to_18_decimals(1000);
+        env.odra_env.set_caller(env.alice);
+        env.pair.transfer(
+            &env.pair.address(),
+            &(expected_liquidity - U256::from(MINIMUM_LIQUIDITY)),
+        );
+
+        env.odra_env.set_caller(env.owner);
+        env.pair.burn(env.owner);
+
+        assert_eq!(env.pair.total_supply(), U256::from(MINIMUM_LIQUIDITY));
+    }
+
+    #[test]
+    fn fee_to_on() {
+        let mut env = setup(true);
+
+        let token0amount = expand_to_18_decimals(1000);
+        let token1amount = expand_to_18_decimals(1000);
+
+        add_liquidity(&mut env, token0amount, token1amount);
+
+        let swap_amount = expand_to_18_decimals(1);
+        let expected_output_amount = U256::from(996006981039903216 as u128);
+        env.token1.transfer(&env.pair.address(), &swap_amount);
+        env.pair
+            .swap(expected_output_amount, U256::zero(), env.owner, None);
+
+        let expected_liquidity = expand_to_18_decimals(1000);
+        env.odra_env.set_caller(env.alice);
+        env.pair.transfer(
+            &env.pair.address(),
+            &(expected_liquidity - U256::from(MINIMUM_LIQUIDITY)),
+        );
+
+        env.odra_env.set_caller(env.owner);
+        env.pair.burn(env.owner);
+
+        // Verify total supply includes protocol fee
+        assert_eq!(
+            env.pair.total_supply(),
+            U256::from(MINIMUM_LIQUIDITY) + U256::from(249750499251388 as u128)
+        );
+
+        // Verify bob (feeTo set in setup) received the protocol fee in LP tokens
+        assert_eq!(
+            env.pair.balance_of(&env.bob),
+            U256::from(249750499251388 as u128)
+        );
+
+        // Verify token balances in pair
+        // Using 1000 here instead of MINIMUM_LIQUIDITY because the amounts only happen to be equal
+        // because the initial liquidity amounts were equal
+        assert_eq!(
+            env.token0.balance_of(&env.pair.address()),
+            U256::from(1000) + U256::from(249501683697445 as u128)
+        );
+        assert_eq!(
+            env.token1.balance_of(&env.pair.address()),
+            U256::from(1000) + U256::from(250000187312969 as u128)
+        );
     }
 }
