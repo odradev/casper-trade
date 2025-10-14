@@ -425,10 +425,7 @@ impl CasperswapV2Pair {
 mod tests {
     use crate::{
         factory::{Factory, FactoryInitArgs},
-        sample_tokens::{
-            SampleTokenA, SampleTokenAHostRef, SampleTokenAInitArgs, SampleTokenB,
-            SampleTokenBHostRef, SampleTokenBInitArgs,
-        },
+        sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs},
         utils::{encode_price, expand_to_18_decimals},
     };
 
@@ -441,8 +438,8 @@ mod tests {
     struct PairEnv {
         pub odra_env: HostEnv,
         pub pair: CasperswapV2PairHostRef,
-        pub token0: SampleTokenAHostRef,
-        pub token1: SampleTokenBHostRef,
+        pub token0: SampleTokenHostRef,
+        pub token1: SampleTokenHostRef,
         pub owner: Address,
         pub alice: Address,
         pub bob: Address,
@@ -459,18 +456,18 @@ mod tests {
                 fee_to: if fee_on { Some(bob) } else { None },
             },
         );
-        let token0 = SampleTokenA::deploy(
+        let token0 = SampleToken::deploy(
             &env,
-            SampleTokenAInitArgs {
+            SampleTokenInitArgs {
                 name: "Sample Token A".to_string(),
                 symbol: "STA".to_string(),
                 decimals: 18,
                 initial_supply: expand_to_18_decimals(10000),
             },
         );
-        let token1 = SampleTokenB::deploy(
+        let token1 = SampleToken::deploy(
             &env,
-            SampleTokenBInitArgs {
+            SampleTokenInitArgs {
                 name: "Sample Token B".to_string(),
                 symbol: "STB".to_string(),
                 decimals: 18,

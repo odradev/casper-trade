@@ -4,9 +4,7 @@
 
 use casperswap_contracts::casperswap_v2_pair::{CasperswapV2Pair, CasperswapV2PairInitArgs};
 use casperswap_contracts::factory::{Factory, FactoryInitArgs};
-use casperswap_contracts::sample_tokens::{
-    SampleTokenA, SampleTokenAInitArgs, SampleTokenB, SampleTokenBInitArgs,
-};
+use casperswap_contracts::sample_tokens::{SampleToken, SampleTokenInitArgs};
 use odra::casper_types::U256;
 use odra::host::{HostEnv, InstallConfig};
 use odra::prelude::Addressable;
@@ -41,10 +39,10 @@ impl DeployScript for ContractsDeployScript {
         println!("Factory deployed successfully!");
 
         // Deploy Sample Token A
-        let token_a = SampleTokenA::load_or_deploy_with_cfg(
+        let token_a = SampleToken::load_or_deploy_with_cfg(
             env,
             Some("SampleTokenA".to_string()),
-            SampleTokenAInitArgs {
+            SampleTokenInitArgs {
                 name: "Sample Token A".to_string(),
                 symbol: "TKNA".to_string(),
                 decimals: 18,
@@ -65,10 +63,10 @@ impl DeployScript for ContractsDeployScript {
         println!("  Total Supply: {}", token_a.total_supply());
 
         // Deploy Sample Token B
-        let token_b = SampleTokenB::load_or_deploy_with_cfg(
+        let token_b = SampleToken::load_or_deploy_with_cfg(
             env,
             Some("SampleTokenB".to_string()),
-            SampleTokenBInitArgs {
+            SampleTokenInitArgs {
                 name: "Sample Token B".to_string(),
                 symbol: "TKNB".to_string(),
                 decimals: 18,
@@ -114,8 +112,8 @@ pub fn main() {
         .deploy(ContractsDeployScript)
         .contract::<Factory>()
         .contract::<CasperswapV2Pair>()
-        .named_contract::<SampleTokenA>("SampleTokenA".to_string())
-        .named_contract::<SampleTokenB>("SampleTokenB".to_string())
+        .named_contract::<SampleToken>("SampleTokenA".to_string())
+        .named_contract::<SampleToken>("SampleTokenB".to_string())
         .scenario(CreatePair)
         .scenario(MintTokens)
         .build()

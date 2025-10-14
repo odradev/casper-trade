@@ -1,4 +1,4 @@
-use casperswap_contracts::sample_tokens::SampleTokenA;
+use casperswap_contracts::sample_tokens::SampleToken;
 use odra::casper_types::U256;
 use odra::host::HostEnv;
 use odra::prelude::Address;
@@ -40,7 +40,7 @@ impl Scenario for MintTokens {
 
         // Get the token contract
         let mut token =
-            container.contract_ref::<SampleTokenA>(env, Some("SampleTokenA".to_string()))?;
+            container.contract_ref::<SampleToken>(env, Some("SampleTokenA".to_string()))?;
 
         // Get args
         let recipient_str = args.get_single::<String>("recipient")?;

@@ -36,8 +36,8 @@ cargo run --bin casperswap_cli -- deploy
 
 This will deploy:
 - **Factory** contract - manages pair creation and fee collection
-- **SampleTokenA** - Test token A (TKNA) with 1 billion initial supply
-- **SampleTokenB** - Test token B (TKNB) with 1 billion initial supply
+- **SampleToken** (instance A) - Test token A (TKNA) with 1 billion initial supply
+- **SampleToken** (instance B) - Test token B (TKNB) with 1 billion initial supply
 - **CasperswapV2Pair** - Template pair contract
 
 ### Contract Interactions
@@ -67,13 +67,15 @@ Key methods:
 
 #### Interact with Sample Tokens
 
-Interact with SampleTokenA:
+The same `SampleToken` contract is deployed twice with different names and symbols.
+
+Interact with SampleTokenA (TKNA):
 
 ```bash
 cargo run --bin casperswap_cli -- named-contract SampleTokenA <method> [args...]
 ```
 
-Interact with SampleTokenB:
+Interact with SampleTokenB (TKNB):
 
 ```bash
 cargo run --bin casperswap_cli -- named-contract SampleTokenB <method> [args...]
@@ -141,8 +143,8 @@ Refer to the `Odra.toml` file in the project root for configuration options.
 2. Initialize a pair with the deployed tokens:
    ```bash
    cargo run --bin casperswap_cli -- scenario CreatePair \
-     --token0 <SampleTokenA_address> \
-     --token1 <SampleTokenB_address>
+     --token0 <token_A_address> \
+     --token1 <token_B_address>
    ```
 
 3. Mint tokens to your account:
