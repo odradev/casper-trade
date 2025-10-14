@@ -516,19 +516,13 @@ mod tests {
             env.pair.balance_of(&env.alice),
             expected_liquidity.saturating_sub(U256::from(MINIMUM_LIQUIDITY))
         );
-        assert_eq!(
-            env.token0.balance_of(&env.pair.address()),
-            U256::from(token0amount)
-        );
-        assert_eq!(
-            env.token1.balance_of(&env.pair.address()),
-            U256::from(token1amount)
-        );
+        assert_eq!(env.token0.balance_of(&env.pair.address()), token0amount);
+        assert_eq!(env.token1.balance_of(&env.pair.address()), token1amount);
 
         let reserve0 = env.pair.get_reserve0();
         let reserve1 = env.pair.get_reserve1();
-        assert_eq!(reserve0, U256::from(token0amount));
-        assert_eq!(reserve1, U256::from(token1amount));
+        assert_eq!(reserve0, token0amount);
+        assert_eq!(reserve1, token1amount);
     }
 
     #[test]
@@ -540,7 +534,7 @@ mod tests {
         add_liquidity(&mut env, token0amount, token1amount);
 
         let swap_amount = expand_to_18_decimals(1);
-        let expected_output_amount = U256::from(1662497915624478906 as u128);
+        let expected_output_amount = U256::from(1662497915624478906_u128);
 
         env.token0.transfer(&env.pair.address(), &swap_amount);
         env.pair
@@ -583,7 +577,7 @@ mod tests {
         add_liquidity(&mut env, token0amount, token1amount);
 
         let swap_amount = expand_to_18_decimals(1);
-        let expected_output_amount = U256::from(453305446940074565 as u128);
+        let expected_output_amount = U256::from(453305446940074565_u128);
 
         env.token1.transfer(&env.pair.address(), &swap_amount);
         env.pair
@@ -657,7 +651,7 @@ mod tests {
     #[test]
     fn swap_test_cases() {
         // Test cases: [swapAmount, token0Amount, token1Amount, expectedOutputAmount]
-        let swap_test_cases: Vec<(u64, u64, u64, u128)> = vec![
+        let swap_test_cases: Vec<SwapTestCase> = vec![
             (1, 5, 10, 1662497915624478906),
             (1, 10, 5, 453305446940074565),
             (2, 5, 10, 2851015155847869602),
@@ -694,12 +688,16 @@ mod tests {
         }
     }
 
+    // Type definitions for test cases
+    type OptimisticTestCase = (Option<u64>, u64, u64, Option<u64>, u128);
+    type SwapTestCase = (u64, u64, u64, u128);
+
     #[test]
     fn optimistic() {
         // Test cases: [outputAmount, token0Amount, token1Amount, inputAmount]
         // First 3 cases: given amountIn, amountOut = floor(amountIn * .997)
         // Last case: given amountOut, amountIn = ceiling(amountOut / .997)
-        let optimistic_test_cases: Vec<(Option<u64>, u64, u64, Option<u64>, u128)> = vec![
+        let optimistic_test_cases: Vec<OptimisticTestCase> = vec![
             (None, 5, 10, Some(1), 997000000000000000),
             (None, 10, 5, Some(1), 997000000000000000),
             (None, 5, 5, Some(1), 997000000000000000),
@@ -745,7 +743,7 @@ mod tests {
         add_liquidity(&mut env, token0amount, token1amount);
 
         let swap_amount = expand_to_18_decimals(1);
-        let expected_output_amount = U256::from(996006981039903216 as u128);
+        let expected_output_amount = U256::from(996006981039903216_u128);
         env.token1.transfer(&env.pair.address(), &swap_amount);
         env.pair
             .swap(expected_output_amount, U256::zero(), env.owner, None);
@@ -773,7 +771,7 @@ mod tests {
         add_liquidity(&mut env, token0amount, token1amount);
 
         let swap_amount = expand_to_18_decimals(1);
-        let expected_output_amount = U256::from(996006981039903216 as u128);
+        let expected_output_amount = U256::from(996006981039903216_u128);
         env.token1.transfer(&env.pair.address(), &swap_amount);
         env.pair
             .swap(expected_output_amount, U256::zero(), env.owner, None);
@@ -791,13 +789,13 @@ mod tests {
         // Verify total supply includes protocol fee
         assert_eq!(
             env.pair.total_supply(),
-            U256::from(MINIMUM_LIQUIDITY) + U256::from(249750499251388 as u128)
+            U256::from(MINIMUM_LIQUIDITY) + U256::from(249750499251388_u128)
         );
 
         // Verify bob (feeTo set in setup) received the protocol fee in LP tokens
         assert_eq!(
             env.pair.balance_of(&env.bob),
-            U256::from(249750499251388 as u128)
+            U256::from(249750499251388_u128)
         );
 
         // Verify token balances in pair
@@ -805,11 +803,11 @@ mod tests {
         // because the initial liquidity amounts were equal
         assert_eq!(
             env.token0.balance_of(&env.pair.address()),
-            U256::from(1000) + U256::from(249501683697445 as u128)
+            U256::from(1000) + U256::from(249501683697445_u128)
         );
         assert_eq!(
             env.token1.balance_of(&env.pair.address()),
-            U256::from(1000) + U256::from(250000187312969 as u128)
+            U256::from(1000) + U256::from(250000187312969_u128)
         );
     }
 

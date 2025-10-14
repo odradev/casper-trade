@@ -56,7 +56,7 @@ impl Scenario for CreatePair {
             (token1, token0)
         };
 
-        odra_cli::log(format!("Initializing pair with:"));
+        odra_cli::log("Initializing pair with:".to_string());
         odra_cli::log(format!("  token0: {:?}", token0));
         odra_cli::log(format!("  token1: {:?}", token1));
 
