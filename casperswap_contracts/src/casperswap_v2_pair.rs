@@ -72,7 +72,7 @@ impl CasperswapV2Pair {
     }
 
     #[odra(non_reentrant)]
-    pub fn mint(&mut self, to: Address) {
+    pub fn mint(&mut self, to: Address) -> U256 {
         // TODO: below should be zero address or some kind of locking mechanism
         let zero_address = zero_address();
         let balance0 = self.token0().balance_of(&self.env().self_address());
@@ -112,6 +112,8 @@ impl CasperswapV2Pair {
             amount0,
             amount1,
         });
+
+        liquidity
     }
 
     #[odra(non_reentrant)]
