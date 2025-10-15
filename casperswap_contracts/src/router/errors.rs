@@ -10,6 +10,7 @@ pub enum CasperswapV2RouterError {
     ExcessiveInputAmount = 21005,
     InvalidPath = 21006,
     PairNotFound = 21007,
+    InsufficientBalance = 21008,
 }
 
 // Library error types merged from casperswap_v2_library

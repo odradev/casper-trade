@@ -7,6 +7,11 @@ pub fn expand_to_18_decimals(amount: u64) -> U256 {
     amount.saturating_mul(U256::from(10).pow(U256::from(18)))
 }
 
+pub fn expand_to_9_decimals(amount: u64) -> U256 {
+    let amount = U256::from(amount);
+    amount.saturating_mul(U256::from(10).pow(U256::from(9)))
+}
+
 pub fn zero_address() -> Address {
     Address::from_str("hash-0000000000000000000000000000000000000000000000000000000000000000")
         .unwrap()
