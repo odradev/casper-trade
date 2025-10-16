@@ -75,8 +75,8 @@ impl CasperswapV2Pair {
     pub fn mint(&mut self, to: Address) -> U256 {
         // TODO: below should be zero address or some kind of locking mechanism
         let zero_address = zero_address();
-        let balance0 = self.token0().balance_of(&self.env().self_address());
-        let balance1 = self.token1().balance_of(&self.env().self_address());
+        let balance0 = self.token0_instance().balance_of(&self.env().self_address());
+        let balance1 = self.token1_instance().balance_of(&self.env().self_address());
         let reserve0 = self.reserve0.get_or_default();
         let reserve1 = self.reserve1.get_or_default();
 
@@ -123,8 +123,8 @@ impl CasperswapV2Pair {
         let reserve1 = self.reserve1.get_or_default();
 
         // Get current balances
-        let balance0 = self.token0().balance_of(&self.env().self_address());
-        let balance1 = self.token1().balance_of(&self.env().self_address());
+        let balance0 = self.token0_instance().balance_of(&self.env().self_address());
+        let balance1 = self.token1_instance().balance_of(&self.env().self_address());
 
         // Get liquidity (LP tokens held by this contract)
         let liquidity = self.balance_of(&self.env().self_address());
@@ -148,12 +148,12 @@ impl CasperswapV2Pair {
         self.token.raw_burn(&self_address, &liquidity);
 
         // Transfer tokens to recipient
-        self.token0().transfer(&to, &amount0);
-        self.token1().transfer(&to, &amount1);
+        self.token0_instance().transfer(&to, &amount0);
+        self.token1_instance().transfer(&to, &amount1);
 
         // Get new balances
-        let balance0 = self.token0().balance_of(&self.env().self_address());
-        let balance1 = self.token1().balance_of(&self.env().self_address());
+        let balance0 = self.token0_instance().balance_of(&self.env().self_address());
+        let balance1 = self.token1_instance().balance_of(&self.env().self_address());
 
         // Update reserves
         self._update(balance0, balance1, reserve0, reserve1);
@@ -208,10 +208,10 @@ impl CasperswapV2Pair {
 
         // Optimistically transfer tokens
         if !amount0_out.is_zero() {
-            self.token0().transfer(&to, &amount0_out);
+            self.token0_instance().transfer(&to, &amount0_out);
         }
         if !amount1_out.is_zero() {
-            self.token1().transfer(&to, &amount1_out);
+            self.token1_instance().transfer(&to, &amount1_out);
         }
 
         // Call the callback if data is provided
@@ -221,8 +221,8 @@ impl CasperswapV2Pair {
         }
 
         // Get new balances
-        let balance0 = self.token0().balance_of(&self.env().self_address());
-        let balance1 = self.token1().balance_of(&self.env().self_address());
+        let balance0 = self.token0_instance().balance_of(&self.env().self_address());
+        let balance1 = self.token1_instance().balance_of(&self.env().self_address());
 
         // Calculate input amounts
         let amount0_in = if balance0 > reserve0 - amount0_out {
@@ -303,26 +303,34 @@ impl CasperswapV2Pair {
         let reserve0 = self.reserve0.get_or_default();
         let reserve1 = self.reserve1.get_or_default();
 
-        let balance0 = self.token0().balance_of(&self.env().self_address());
-        let balance1 = self.token1().balance_of(&self.env().self_address());
+        let balance0 = self.token0_instance().balance_of(&self.env().self_address());
+        let balance1 = self.token1_instance().balance_of(&self.env().self_address());
 
         // Transfer any excess balance (balance - reserve) to the recipient
         if balance0 > reserve0 {
-            self.token0().transfer(&to, &(balance0 - reserve0));
+            self.token0_instance().transfer(&to, &(balance0 - reserve0));
         }
         if balance1 > reserve1 {
-            self.token1().transfer(&to, &(balance1 - reserve1));
+            self.token1_instance().transfer(&to, &(balance1 - reserve1));
         }
     }
 
     /// Force reserves to match balances
     #[odra(non_reentrant)]
     pub fn sync(&mut self) {
-        let balance0 = self.token0().balance_of(&self.env().self_address());
-        let balance1 = self.token1().balance_of(&self.env().self_address());
+        let balance0 = self.token0_instance().balance_of(&self.env().self_address());
+        let balance1 = self.token1_instance().balance_of(&self.env().self_address());
         let reserve0 = self.reserve0.get_or_default();
         let reserve1 = self.reserve1.get_or_default();
         self._update(balance0, balance1, reserve0, reserve1);
+    }
+
+    pub fn token0(&self) -> Address {
+        self.token0.get_or_revert_with(CasperswapV2PairError::NotInitialized)
+    }
+
+    pub fn token1(&self) -> Address {
+        self.token1.get_or_revert_with(CasperswapV2PairError::NotInitialized)
     }
 }
 
@@ -406,7 +414,7 @@ impl CasperswapV2Pair {
         )
     }
 
-    fn token0(&self) -> Cep18ContractRef {
+    fn token0_instance(&self) -> Cep18ContractRef {
         Cep18ContractRef::new(
             self.env(),
             self.token0
@@ -414,7 +422,7 @@ impl CasperswapV2Pair {
         )
     }
 
-    fn token1(&self) -> Cep18ContractRef {
+    fn token1_instance(&self) -> Cep18ContractRef {
         Cep18ContractRef::new(
             self.env(),
             self.token1

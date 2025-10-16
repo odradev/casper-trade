@@ -231,46 +231,88 @@ impl CasperswapV2Router {
     // **** SWAP ****
 
     /// Internal swap function - requires the initial amount to have already been sent to the first pair
-    fn _swap(&mut self, _amounts: Vec<U256>, _path: Vec<Address>, _to: Address) {
-        // TODO: Implement _swap
-        // Loop through path and perform swaps on each pair
-        unimplemented!("_swap")
+    fn _swap(&mut self, amounts: Vec<U256>, path: Vec<Address>, to: Address) {
+        for i in 0..path.len() - 1 {
+            let input = path[i];
+            let output = path[i + 1];
+            let (token0, _) = self.sort_tokens(input, output);
+            let amount_out = amounts[i + 1];
+            let (amount0_out, amount1_out) = if input == token0 {
+                (U256::zero(), amount_out)
+            } else {
+                (amount_out, U256::zero())
+            };
+            let recipient = if i < path.len() - 2 {
+                self.pair_for(output, path[i + 2])
+            } else {
+                to
+            };
+            let pair_address = self.pair_for(input, output);
+            let mut pair = CasperswapV2PairContractRef::new(self.env(), pair_address);
+            pair.swap(amount0_out, amount1_out, recipient, None);
+        }
     }
 
     /// Swap exact tokens for tokens
     pub fn swap_exact_tokens_for_tokens(
         &mut self,
-        _amount_in: U256,
-        _amount_out_min: U256,
-        _path: Vec<Address>,
-        _to: Address,
-        _deadline: u64,
+        amount_in: U256,
+        amount_out_min: U256,
+        path: Vec<Address>,
+        to: Address,
+        deadline: u64,
     ) -> Vec<U256> {
-        // TODO: Implement swap_exact_tokens_for_tokens
-        // 1. Check deadline
-        // 2. Calculate amounts using library
-        // 3. Verify output amount
-        // 4. Transfer input tokens to first pair
-        // 5. Perform swap
-        unimplemented!("swap_exact_tokens_for_tokens")
+        // Check deadline
+        if self.env().get_block_time() > deadline {
+            self.env().revert(CasperswapV2RouterError::Expired);
+        }
+
+        // Calculate amounts
+        let amounts = self.get_amounts_out(amount_in, path.clone());
+        if amounts[amounts.len() - 1] < amount_out_min {
+            self.env().revert(CasperswapV2RouterError::InsufficientOutputAmount);
+        }
+
+        // Transfer input tokens to first pair
+        let pair_address = self.pair_for(path[0], path[1]);
+        let mut token_instance = Cep18ContractRef::new(self.env(), path[0]);
+        token_instance.transfer_from(&self.env().caller(), &pair_address, &amounts[0]);
+
+        // Perform swap
+        self._swap(amounts.clone(), path, to);
+
+        amounts
     }
 
     /// Swap tokens for exact tokens
     pub fn swap_tokens_for_exact_tokens(
         &mut self,
-        _amount_out: U256,
-        _amount_in_max: U256,
-        _path: Vec<Address>,
-        _to: Address,
-        _deadline: u64,
+        amount_out: U256,
+        amount_in_max: U256,
+        path: Vec<Address>,
+        to: Address,
+        deadline: u64,
     ) -> Vec<U256> {
-        // TODO: Implement swap_tokens_for_exact_tokens
-        // 1. Check deadline
-        // 2. Calculate amounts using library
-        // 3. Verify input amount
-        // 4. Transfer input tokens to first pair
-        // 5. Perform swap
-        unimplemented!("swap_tokens_for_exact_tokens")
+        // Check deadline
+        if self.env().get_block_time() > deadline {
+            self.env().revert(CasperswapV2RouterError::Expired);
+        }
+
+        // Calculate amounts
+        let amounts = self.get_amounts_in(amount_out, path.clone());
+        if amounts[0] > amount_in_max {
+            self.env().revert(CasperswapV2RouterError::ExcessiveInputAmount);
+        }
+
+        // Transfer input tokens to first pair
+        let pair_address = self.pair_for(path[0], path[1]);
+        let mut token_instance = Cep18ContractRef::new(self.env(), path[0]);
+        token_instance.transfer_from(&self.env().caller(), &pair_address, &amounts[0]);
+
+        // Perform swap
+        self._swap(amounts.clone(), path, to);
+
+        amounts
     }
 
 
@@ -396,13 +438,13 @@ impl CasperswapV2Router {
 mod tests {
     use super::*;
     use crate::{
-        casperswap_v2_pair::{CasperswapV2Pair, CasperswapV2PairInitArgs, MINIMUM_LIQUIDITY}, factory::{Factory, FactoryHostRef, FactoryInitArgs}, sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs}, utils::{expand_to_18_decimals, expand_to_9_decimals}
+        casperswap_v2_pair::{CasperswapV2Pair, CasperswapV2PairHostRef, CasperswapV2PairInitArgs, MINIMUM_LIQUIDITY}, factory::{Factory, FactoryHostRef, FactoryInitArgs}, sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs}, utils::{expand_to_18_decimals, expand_to_9_decimals}
     };
     use odra::{
         host::{Deployer, HostEnv, HostRef, NoArgs},
         prelude::Address,
     };
-    use odra_modules::wrapped_native::{WrappedNativeToken, WrappedNativeTokenHostRef};
+    use odra_modules::{cep18_token::Cep18HostRef, wrapped_native::{WrappedNativeToken, WrappedNativeTokenHostRef}};
 
     struct RouterEnv {
         pub odra_env: HostEnv,
@@ -410,6 +452,7 @@ mod tests {
         pub factory: FactoryHostRef,
         pub token0: SampleTokenHostRef,
         pub token1: SampleTokenHostRef,
+        pub pair: CasperswapV2PairHostRef,
         pub wcspr: WrappedNativeTokenHostRef,
         pub owner: Address,
         pub alice: Address,
@@ -474,6 +517,7 @@ mod tests {
             factory,
             token0,
             token1,
+            pair,
             wcspr,
             owner,
             alice,
@@ -655,6 +699,18 @@ mod tests {
         assert_eq!(liquidity, expected_liquidity - U256::from(MINIMUM_LIQUIDITY));
     }
 
+    // great name from uniswap tests
+    fn add_liquidity(env: &mut RouterEnv, token0_amount: U256, token1_amount: U256) {
+        let pair_address = env.pair.address();
+        let mut pair_instance = CasperswapV2PairHostRef::new(pair_address, env.odra_env.clone());
+        let mut token0_instance = Cep18HostRef::new(pair_instance.token0(), env.odra_env.clone());
+        let mut token1_instance = Cep18HostRef::new(pair_instance.token1(), env.odra_env.clone());
+        token0_instance.transfer(&pair_instance.address(), &token0_amount);
+        token1_instance.transfer(&pair_instance.address(), &token1_amount);
+
+        pair_instance.mint(env.owner);
+    }
+
     #[test]
     fn test_add_liquidity_cspr() {
         let mut env = setup_router();
@@ -673,7 +729,7 @@ mod tests {
         // Uniswap: expectedLiquidity = expandTo18Decimals(2) (simple 2 * 10^18)
         // Our case: sqrt(1 * 10^18 * 4 * 10^9) = sqrt(4 * 10^27) = 2 * 10^13.5 ≈ 63,245,553,202,367
         let expected_liquidity = (token_amount * cspr_amount).integer_sqrt() - U256::from(MINIMUM_LIQUIDITY);
-        
+
         env.token0.approve(&env.router.address(), &U256::MAX);
 
         let (amount_token, amount_cspr, liquidity) = env.router
@@ -692,6 +748,37 @@ mod tests {
         assert_eq!(liquidity, expected_liquidity);
     }
 
+    #[test]
+    fn test_remove_liquidity() {
+        let mut env = setup_router();
+
+        let token0_amount = expand_to_18_decimals(1);
+        let token1_amount = expand_to_18_decimals(4);
+        add_liquidity(&mut env, token0_amount, token1_amount);
+
+        let expected_liquidity = expand_to_18_decimals(2);
+
+        // Approve router to spend pair tokens
+        env.pair.approve(&env.router.address(), &U256::MAX);
+
+        // Remove liquidity - should get back less than original amounts due to 0.3% fee
+        let (amount_a, amount_b) = env.router.remove_liquidity(
+            env.token0.address(),
+            env.token1.address(),
+            expected_liquidity - U256::from(MINIMUM_LIQUIDITY),
+            U256::from(0),
+            U256::from(0),
+            env.owner,
+            u64::MAX,
+        );
+
+        assert_eq!(env.pair.balance_of(&env.owner), U256::from(0));
+        let total_supply_token0 = env.token0.total_supply();
+        let total_supply_token1 = env.token1.total_supply();
+        assert_eq!(env.token0.balance_of(&env.owner), total_supply_token0 - U256::from(500));
+        assert_eq!(env.token1.balance_of(&env.owner), total_supply_token1 - U256::from(2000));
+
+    }
 
 }
 
