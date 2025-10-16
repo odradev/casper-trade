@@ -396,7 +396,7 @@ impl CasperswapV2Router {
 mod tests {
     use super::*;
     use crate::{
-        casperswap_v2_pair::{CasperswapV2Pair, CasperswapV2PairInitArgs}, factory::{Factory, FactoryHostRef, FactoryInitArgs}, sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs}, utils::{expand_to_18_decimals, expand_to_9_decimals}
+        casperswap_v2_pair::{CasperswapV2Pair, CasperswapV2PairInitArgs, MINIMUM_LIQUIDITY}, factory::{Factory, FactoryHostRef, FactoryInitArgs}, sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs}, utils::{expand_to_18_decimals, expand_to_9_decimals}
     };
     use odra::{
         host::{Deployer, HostEnv, HostRef, NoArgs},
@@ -631,43 +631,66 @@ mod tests {
     }
 
     #[test]
-    fn test_add_liquidity_cspr() {
+    fn test_add_liquidity() {
         let mut env = setup_router();
-        
-        // Use token0 as the token to pair with WCSPR
-        let token = env.token0.address();
-        let wcspr = env.wcspr.address();
 
-        // Amounts for liquidity - use very small amounts to avoid issues
-        let token_amount = expand_to_18_decimals(1);
-        let cspr_amount = expand_to_9_decimals(1); // 1 CSPR = 1e9 motes
-        
-        // Deploy and setup wcspr pair
-        let mut pair = CasperswapV2Pair::deploy(&env.odra_env, CasperswapV2PairInitArgs {
-            factory: env.factory.address(),
-        });
-        pair.initialize(token, wcspr);
-        env.factory.will_return_pair(Some(pair.address()));
-        
-        // Approve tokens
-        env.token0.approve(&env.router.address(), &token_amount);
-        
-        // Test add_liquidity_cspr function
-        let (amount_token, amount_cspr, liquidity) = env.router.with_tokens(odra::uints::ToU512::to_u512(cspr_amount)).add_liquidity_cspr(
-            token,
-            token_amount,
-            U256::from(0),
-            U256::from(0),
+        let token0_amount = expand_to_18_decimals(1);
+        let token1_amount = expand_to_18_decimals(4);
+
+        let expected_liquidity = expand_to_18_decimals(2);
+        env.token0.approve(&env.router.address(), &U256::MAX);
+        env.token1.approve(&env.router.address(), &U256::MAX);
+
+        let (amount0, amount1, liquidity) = env.router.add_liquidity(
+            env.token0.address(),
+            env.token1.address(),
+            token0_amount,
+            token1_amount,
+            U256::from(0), // amountAMin
+            U256::from(0), // amountBMin
             env.owner,
-            u64::MAX,
+            u64::MAX, // deadline
         );
-        
-        // Verify the function succeeded
-        assert!(amount_token > U256::from(0), "Should return positive token amount");
-        assert!(amount_cspr > U256::from(0), "Should return positive CSPR amount");
-        assert!(liquidity > U256::from(0), "Should return positive liquidity");
+
+        assert_eq!(liquidity, expected_liquidity - U256::from(MINIMUM_LIQUIDITY));
     }
 
+    #[test]
+    fn test_add_liquidity_cspr() {
+        let mut env = setup_router();
+
+        let mut cspr_pair = CasperswapV2Pair::deploy(&env.odra_env, CasperswapV2PairInitArgs {
+            factory: env.factory.address(),
+        });
+        cspr_pair.initialize(env.token0.address(), env.wcspr.address());
+
+        env.factory.will_return_pair(Some(cspr_pair.address()));
+
+        let token_amount = expand_to_18_decimals(1);
+        let cspr_amount = expand_to_9_decimals(4);
+
+        // DIFFERENCE FROM UNISWAP: Liquidity calculation differs due to different decimals
+        // Uniswap: expectedLiquidity = expandTo18Decimals(2) (simple 2 * 10^18)
+        // Our case: sqrt(1 * 10^18 * 4 * 10^9) = sqrt(4 * 10^27) = 2 * 10^13.5 ≈ 63,245,553,202,367
+        let expected_liquidity = (token_amount * cspr_amount).integer_sqrt() - U256::from(MINIMUM_LIQUIDITY);
+        
+        env.token0.approve(&env.router.address(), &U256::MAX);
+
+        let (amount_token, amount_cspr, liquidity) = env.router
+            .with_tokens(cspr_amount.to_u512())
+            .add_liquidity_cspr(
+                env.token0.address(),
+                token_amount,
+                U256::from(0),
+                U256::from(0),
+                env.owner,
+                u64::MAX,
+            );
+
+        assert_eq!(amount_token, token_amount);
+        assert_eq!(amount_cspr, cspr_amount);
+        assert_eq!(liquidity, expected_liquidity);
+    }
 
 
 }
