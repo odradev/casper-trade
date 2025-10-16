@@ -452,8 +452,10 @@ mod tests {
         pub factory: FactoryHostRef,
         pub token0: SampleTokenHostRef,
         pub token1: SampleTokenHostRef,
-        pub pair: CasperswapV2PairHostRef,
         pub wcspr: WrappedNativeTokenHostRef,
+        pub weth_partner: SampleTokenHostRef,
+        pub pair: CasperswapV2PairHostRef,
+        pub weth_pair: CasperswapV2PairHostRef,
         pub owner: Address,
         pub alice: Address,
         pub bob: Address,
@@ -490,7 +492,7 @@ mod tests {
                 initial_supply: expand_to_18_decimals(10000),
             },
         );
-        
+
         let token1 = SampleToken::deploy(
             &env,
             SampleTokenInitArgs {
@@ -501,14 +503,30 @@ mod tests {
             },
         );
 
-        // Deploy pair mock for our tests, until the factory is implemented
+        // Deploy WETH partner token (equivalent to WETHPartner in fixtures.ts)
+        let weth_partner = SampleToken::deploy(
+            &env,
+            SampleTokenInitArgs {
+                name: "WETH Partner".to_string(),
+                symbol: "WETHP".to_string(),
+                decimals: 18,
+                initial_supply: expand_to_18_decimals(10000),
+            },
+        );
+
+        // Deploy pair for token0-token1
         let mut pair = CasperswapV2Pair::deploy(&env, CasperswapV2PairInitArgs {
             factory: factory.address(),
         });
-
         pair.initialize(token0.address(), token1.address());
 
-        // Make factory return the pair
+        // Deploy pair for WETH-WETHPartner
+        let mut weth_pair = CasperswapV2Pair::deploy(&env, CasperswapV2PairInitArgs {
+            factory: factory.address(),
+        });
+        weth_pair.initialize(wcspr.address(), weth_partner.address());
+
+        // Make factory return the pairs
         factory.will_return_pair(Some(pair.address()));
         
         RouterEnv {
@@ -517,8 +535,10 @@ mod tests {
             factory,
             token0,
             token1,
-            pair,
             wcspr,
+            weth_partner,
+            pair,
+            weth_pair,
             owner,
             alice,
             bob,
