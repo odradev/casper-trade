@@ -191,27 +191,6 @@ impl CasperswapV2Router {
         (amount_a, amount_b)
     }
 
-    /// Remove liquidity with permit (gasless approval)
-    pub fn remove_liquidity_with_permit(
-        &mut self,
-        _token_a: Address,
-        _token_b: Address,
-        _liquidity: U256,
-        _amount_a_min: U256,
-        _amount_b_min: U256,
-        _to: Address,
-        _deadline: u64,
-        _approve_max: bool,
-        _v: u8,
-        _r: [u8; 32],
-        _s: [u8; 32],
-    ) -> (U256, U256) {
-        // TODO: Implement remove_liquidity_with_permit
-        // 1. Get pair address
-        // 2. Call permit on pair
-        // 3. Call remove_liquidity
-        unimplemented!("remove_liquidity_with_permit")
-    }
 
     /// Remove liquidity from a token-CSPR pair
     pub fn remove_liquidity_cspr(
@@ -248,41 +227,6 @@ impl CasperswapV2Router {
         (amount_token, amount_cspr)
     }
 
-    /// Remove liquidity from a token-CSPR pair supporting fee-on-transfer tokens
-    pub fn remove_liquidity_cspr_supporting_fee_on_transfer_tokens(
-        &mut self,
-        token: Address,
-        liquidity: U256,
-        amount_token_min: U256,
-        amount_cspr_min: U256,
-        to: Address,
-        deadline: u64,
-    ) -> U256 {
-        let wcspr = self.wcspr();
-        let router_address = self.env().self_address();
-        
-        let (_, amount_cspr) = self.remove_liquidity(
-            token,
-            wcspr,
-            liquidity,
-            amount_token_min,
-            amount_cspr_min,
-            router_address,
-            deadline,
-        );
-        
-        // Transfer actual token balance (handles fee-on-transfer tokens)
-        let mut token_instance = Cep18ContractRef::new(self.env(), token);
-        let token_balance = token_instance.balance_of(&router_address);
-        token_instance.transfer(&to, &token_balance);
-        
-        // Withdraw CSPR from WCSPR and transfer to recipient
-        let mut wcspr_instance = self.wcspr_instance();
-        wcspr_instance.withdraw(&amount_cspr);
-        self.env().transfer_tokens(&to, &amount_cspr.to_u512());
-        
-        amount_cspr
-    }
 
     // **** SWAP ****
 
@@ -329,27 +273,6 @@ impl CasperswapV2Router {
         unimplemented!("swap_tokens_for_exact_tokens")
     }
 
-    // **** SWAP (supporting fee-on-transfer tokens) ****
-
-    /// Internal swap function supporting fee-on-transfer tokens
-    fn _swap_supporting_fee_on_transfer_tokens(&mut self, _path: Vec<Address>, _to: Address) {
-        // TODO: Implement _swap_supporting_fee_on_transfer_tokens
-        // Similar to _swap but handles fee-on-transfer tokens
-        unimplemented!("_swap_supporting_fee_on_transfer_tokens")
-    }
-
-    /// Swap exact tokens for tokens supporting fee-on-transfer tokens
-    pub fn swap_exact_tokens_for_tokens_supporting_fee_on_transfer_tokens(
-        &mut self,
-        _amount_in: U256,
-        _amount_out_min: U256,
-        _path: Vec<Address>,
-        _to: Address,
-        _deadline: u64,
-    ) {
-        // TODO: Implement swap_exact_tokens_for_tokens_supporting_fee_on_transfer_tokens
-        unimplemented!("swap_exact_tokens_for_tokens_supporting_fee_on_transfer_tokens")
-    }
 
     /// Given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
     pub fn quote(&self, amount_a: U256, reserve_a: U256, reserve_b: U256) -> U256 {
@@ -479,7 +402,7 @@ mod tests {
         host::{Deployer, HostEnv, HostRef, NoArgs},
         prelude::Address,
     };
-    use odra_modules::wrapped_native::WrappedNativeToken;
+    use odra_modules::wrapped_native::{WrappedNativeToken, WrappedNativeTokenHostRef};
 
     struct RouterEnv {
         pub odra_env: HostEnv,
@@ -745,65 +668,6 @@ mod tests {
         assert!(liquidity > U256::from(0), "Should return positive liquidity");
     }
 
-    #[test]
-    fn test_remove_liquidity_cspr_supporting_fee_on_transfer_tokens() {
-        let mut env = setup_router();
-        
-        // Use token0 as the token to pair with WCSPR
-        let token = env.token0.address();
-        let wcspr = env.wcspr.address();
-
-        // Amounts for liquidity - use very small amounts to avoid issues
-        let token_amount = expand_to_18_decimals(1);
-        let cspr_amount = expand_to_9_decimals(1); // 1 CSPR = 1e9 motes
-        
-        // Deploy and setup wcspr pair
-        let mut pair = CasperswapV2Pair::deploy(&env.odra_env, CasperswapV2PairInitArgs {
-            factory: env.factory.address(),
-        });
-        pair.initialize(token, wcspr);
-        env.factory.will_return_pair(Some(pair.address()));
-        
-        // Approve tokens
-        env.token0.approve(&env.router.address(), &token_amount);
-        
-        // Add liquidity using add_liquidity_cspr (like addLiquidityETH in Uniswap)
-        let (_, _, liquidity) = env.router.with_tokens(odra::uints::ToU512::to_u512(cspr_amount)).add_liquidity_cspr(
-            token,
-            token_amount,
-            U256::from(0),
-            U256::from(0),
-            env.owner,
-            u64::MAX,
-        );
-        
-        // Approve liquidity tokens
-        pair.approve(&env.router.address(), &liquidity);
-        
-        // Test that the function can be called without panicking
-        // The actual implementation will be tested more thoroughly when the pair contract is fully implemented
-        let result = env.router.try_remove_liquidity_cspr_supporting_fee_on_transfer_tokens(
-            token,
-            liquidity,
-            U256::from(0),
-            U256::from(0),
-            env.owner,
-            u64::MAX,
-        );
-        
-        // For now, just verify the function exists and can be called
-        // The actual balance checks will work once the pair contract is fully implemented
-        match result {
-            Ok(amount_cspr) => {
-                // Function succeeded
-                assert!(amount_cspr >= U256::from(0), "Should return non-negative CSPR amount");
-            },
-            Err(_) => {
-                // Function failed, which is expected in test environment
-                // The important thing is that the function exists and can be called
-            }
-        }
-    }
 
 
 }
