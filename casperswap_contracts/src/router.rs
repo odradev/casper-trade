@@ -33,6 +33,15 @@ impl CasperswapV2Router {
         self.wcspr.get_or_revert_with(CasperswapV2RouterError::Misconfigured)
     }
 
+    /// Accepts CSPR deposits from WCSPR contract (equivalent to Solidity's receive() function)
+    /// Only accepts CSPR from WCSPR contract
+    #[odra(payable)]
+    pub fn deposit(&self) {
+        let wcspr = self.wcspr();
+        if self.env().caller() != wcspr {
+            self.env().revert(CasperswapV2RouterError::Misconfigured);
+        }
+    }
 
     // **** ADD LIQUIDITY ****
 
@@ -453,9 +462,9 @@ mod tests {
         pub token0: SampleTokenHostRef,
         pub token1: SampleTokenHostRef,
         pub wcspr: WrappedNativeTokenHostRef,
-        pub weth_partner: SampleTokenHostRef,
+        pub wcspr_partner: SampleTokenHostRef,
         pub pair: CasperswapV2PairHostRef,
-        pub weth_pair: CasperswapV2PairHostRef,
+        pub wcspr_pair: CasperswapV2PairHostRef,
         pub owner: Address,
         pub alice: Address,
         pub bob: Address,
@@ -503,8 +512,8 @@ mod tests {
             },
         );
 
-        // Deploy WETH partner token (equivalent to WETHPartner in fixtures.ts)
-        let weth_partner = SampleToken::deploy(
+        // Deploy WCSPR partner token (equivalent to WETHPartner in fixtures.ts)
+        let wcspr_partner = SampleToken::deploy(
             &env,
             SampleTokenInitArgs {
                 name: "WETH Partner".to_string(),
@@ -520,11 +529,11 @@ mod tests {
         });
         pair.initialize(token0.address(), token1.address());
 
-        // Deploy pair for WETH-WETHPartner
-        let mut weth_pair = CasperswapV2Pair::deploy(&env, CasperswapV2PairInitArgs {
+        // Deploy pair for WCSPR-WCSPRPartner
+        let mut wcspr_pair = CasperswapV2Pair::deploy(&env, CasperswapV2PairInitArgs {
             factory: factory.address(),
         });
-        weth_pair.initialize(wcspr.address(), weth_partner.address());
+        wcspr_pair.initialize(wcspr.address(), wcspr_partner.address());
 
         // Make factory return the pairs
         factory.will_return_pair(Some(pair.address()));
@@ -536,9 +545,9 @@ mod tests {
             token0,
             token1,
             wcspr,
-            weth_partner,
+            wcspr_partner,
             pair,
-            weth_pair,
+            wcspr_pair,
             owner,
             alice,
             bob,
@@ -547,6 +556,7 @@ mod tests {
 
     #[test]
     fn test_quote() {
+
         let env = setup_router();
         
         // Test basic quote functionality
@@ -804,47 +814,36 @@ mod tests {
     fn test_remove_liquidity_cspr() {
         let mut env = setup_router();
 
-        let weth_partner_amount = expand_to_18_decimals(1);
-        let cspr_amount = expand_to_9_decimals(4); // CSPR has 9 decimals vs ETH's 18
+        let wcspr_partner_amount = expand_to_18_decimals(1);
+        let cspr_amount = expand_to_18_decimals(4);
 
-        env.factory.will_return_pair(Some(env.weth_pair.address()));
+        env.factory.will_return_pair(Some(env.wcspr_pair.address()));
 
-        env.weth_partner.transfer(&env.weth_pair.address(), &weth_partner_amount);
+        env.wcspr_partner.transfer(&env.wcspr_pair.address(), &wcspr_partner_amount);
         env.wcspr.with_tokens(cspr_amount.to_u512()).deposit();
-        env.wcspr.transfer(&env.weth_pair.address(), &cspr_amount);
-        env.weth_pair.mint(env.owner);
+        env.wcspr.transfer(&env.wcspr_pair.address(), &cspr_amount);
+        env.wcspr_pair.mint(env.owner);
 
         let expected_liquidity = expand_to_18_decimals(2);
-        env.weth_pair.approve(&env.router.address(), &U256::MAX);
+        env.wcspr_pair.approve(&env.router.address(), &U256::MAX);
 
-        let (amount_token, amount_cspr) = env.router.remove_liquidity(
-            env.weth_partner.address(),
-            env.wcspr.address(),
-            expected_liquidity,
+        let (amount_token, amount_cspr) = env.router.remove_liquidity_cspr(
+            env.wcspr_partner.address(),
+            expected_liquidity - U256::from(MINIMUM_LIQUIDITY),
             U256::from(0),
             U256::from(0),
             env.owner,
             u64::MAX,
         );
 
-        assert_eq!(env.weth_pair.balance_of(&env.owner), U256::from(0));
-        assert!(amount_token > U256::from(0));
-        assert!(amount_cspr > U256::from(0));
-        
-        let initial_weth_partner_balance = env.weth_partner.balance_of(&env.owner);
-        let initial_wcspr_balance = env.wcspr.balance_of(&env.owner);
-        let final_weth_partner_balance = env.weth_partner.balance_of(&env.owner);
-        let final_wcspr_balance = env.wcspr.balance_of(&env.owner);
-        
-        assert_eq!(final_weth_partner_balance, initial_weth_partner_balance + amount_token);
-        assert_eq!(final_wcspr_balance, initial_wcspr_balance + amount_cspr);
-        assert!(amount_token < weth_partner_amount);
-        assert!(amount_cspr < cspr_amount);
+        assert_eq!(env.wcspr_pair.balance_of(&env.owner), U256::from(0));
+        let total_supply_wcspr_partner = env.wcspr_partner.total_supply();
+        let total_supply_wcspr = env.wcspr.total_supply();
+        assert_eq!(env.wcspr_partner.balance_of(&env.owner), total_supply_wcspr_partner - U256::from(500));
+        assert_eq!(env.wcspr.balance_of(&env.owner), total_supply_wcspr - U256::from(2000));
     }
 
     
 
 }
-
-
 
