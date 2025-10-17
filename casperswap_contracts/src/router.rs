@@ -715,7 +715,7 @@ mod tests {
         env.token0.approve(&env.router.address(), &U256::MAX);
         env.token1.approve(&env.router.address(), &U256::MAX);
 
-        let (amount0, amount1, liquidity) = env.router.add_liquidity(
+        env.router.add_liquidity(
             env.token0.address(),
             env.token1.address(),
             token0_amount,
@@ -726,7 +726,50 @@ mod tests {
             u64::MAX, // deadline
         );
 
-        assert_eq!(liquidity, expected_liquidity - U256::from(MINIMUM_LIQUIDITY));
+        // Check token0 TransferFrom event (user to pair)
+        use odra_modules::cep18::events::TransferFrom;
+        assert!(env.odra_env.emitted_event(
+            &env.token0,
+            TransferFrom {
+                spender: env.router.address(),
+                owner: env.owner,
+                recipient: env.pair.address(),
+                amount: token0_amount,
+            }
+        ));
+
+        // Check token1 TransferFrom event (user to pair)
+        assert!(env.odra_env.emitted_event(
+            &env.token1,
+            TransferFrom {
+                spender: env.router.address(),
+                owner: env.owner,
+                recipient: env.pair.address(),
+                amount: token1_amount,
+            }
+        ));
+
+        // Check Sync event
+        assert!(env.odra_env.emitted_event(
+            &env.pair,
+            crate::casperswap_v2_pair::events::Sync {
+                reserve0: token0_amount,
+                reserve1: token1_amount,
+            }
+        ));
+
+        // Check Mint event
+        assert!(env.odra_env.emitted_event(
+            &env.pair,
+            crate::casperswap_v2_pair::events::Mint {
+                sender: env.router.address(),
+                amount0: token0_amount,
+                amount1: token1_amount,
+            }
+        ));
+
+        // Verify final LP token balance
+        assert_eq!(env.pair.balance_of(&env.owner), expected_liquidity - U256::from(MINIMUM_LIQUIDITY));
     }
 
     // great name from uniswap tests
@@ -762,7 +805,7 @@ mod tests {
 
         env.token0.approve(&env.router.address(), &U256::MAX);
 
-        let (amount_token, amount_cspr, liquidity) = env.router
+        env.router
             .with_tokens(cspr_amount.to_u512())
             .add_liquidity_cspr(
                 env.token0.address(),
@@ -773,9 +816,55 @@ mod tests {
                 u64::MAX,
             );
 
-        assert_eq!(amount_token, token_amount);
-        assert_eq!(amount_cspr, cspr_amount);
-        assert_eq!(liquidity, expected_liquidity);
+        // Check token TransferFrom event (user to pair)
+        use odra_modules::cep18::events::TransferFrom;
+        assert!(env.odra_env.emitted_event(
+            &env.token0,
+            TransferFrom {
+                spender: env.router.address(),
+                owner: env.owner,
+                recipient: cspr_pair.address(),
+                amount: token_amount,
+            }
+        ));
+
+        // Note: WCSPR events would require checking deposit and transfer events
+        // The Uniswap test doesn't explicitly check all WETH events in detail
+
+        // Check Sync event (need to determine token order)
+        let token0_addr = cspr_pair.token0();
+        let (reserve0, reserve1) = if token0_addr == env.token0.address() {
+            (token_amount, cspr_amount)
+        } else {
+            (cspr_amount, token_amount)
+        };
+
+        assert!(env.odra_env.emitted_event(
+            &cspr_pair,
+            crate::casperswap_v2_pair::events::Sync {
+                reserve0,
+                reserve1,
+            }
+        ));
+
+        // Check Mint event (need to determine token order)
+        let (amount0, amount1) = if token0_addr == env.token0.address() {
+            (token_amount, cspr_amount)
+        } else {
+            (cspr_amount, token_amount)
+        };
+
+        assert!(env.odra_env.emitted_event(
+            &cspr_pair,
+            crate::casperswap_v2_pair::events::Mint {
+                sender: env.router.address(),
+                amount0,
+                amount1,
+            }
+        ));
+
+        // Verify final LP token balance
+        assert_eq!(cspr_pair.balance_of(&env.owner), expected_liquidity);
     }
 
     #[test]
@@ -791,7 +880,7 @@ mod tests {
         // Approve router to spend pair tokens
         env.pair.approve(&env.router.address(), &U256::MAX);
 
-        // Remove liquidity - should get back less than original amounts due to 0.3% fee
+        // Remove liquidity
         env.router.remove_liquidity(
             env.token0.address(),
             env.token1.address(),
@@ -802,12 +891,64 @@ mod tests {
             u64::MAX,
         );
 
+        // Check pair TransferFrom event (user sends LP tokens to pair)
+        use odra_modules::cep18::events::{Transfer, TransferFrom};
+        assert!(env.odra_env.emitted_event(
+            &env.pair,
+            TransferFrom {
+                spender: env.router.address(),
+                owner: env.owner,
+                recipient: env.pair.address(),
+                amount: expected_liquidity - U256::from(MINIMUM_LIQUIDITY),
+            }
+        ));
+
+        // Check token0 Transfer event (pair sends tokens to user)
+        assert!(env.odra_env.emitted_event(
+            &env.token0,
+            Transfer {
+                sender: env.pair.address(),
+                recipient: env.owner,
+                amount: token0_amount - U256::from(500),
+            }
+        ));
+
+        // Check token1 Transfer event (pair sends tokens to user)
+        assert!(env.odra_env.emitted_event(
+            &env.token1,
+            Transfer {
+                sender: env.pair.address(),
+                recipient: env.owner,
+                amount: token1_amount - U256::from(2000),
+            }
+        ));
+
+        // Check Sync event
+        assert!(env.odra_env.emitted_event(
+            &env.pair,
+            crate::casperswap_v2_pair::events::Sync {
+                reserve0: U256::from(500),
+                reserve1: U256::from(2000),
+            }
+        ));
+
+        // Check Burn event
+        assert!(env.odra_env.emitted_event(
+            &env.pair,
+            crate::casperswap_v2_pair::events::Burn {
+                sender: env.router.address(),
+                amount0: token0_amount - U256::from(500),
+                amount1: token1_amount - U256::from(2000),
+                to: env.owner,
+            }
+        ));
+
+        // Verify final balances
         assert_eq!(env.pair.balance_of(&env.owner), U256::from(0));
         let total_supply_token0 = env.token0.total_supply();
         let total_supply_token1 = env.token1.total_supply();
         assert_eq!(env.token0.balance_of(&env.owner), total_supply_token0 - U256::from(500));
         assert_eq!(env.token1.balance_of(&env.owner), total_supply_token1 - U256::from(2000));
-
     }
 
     #[test]
@@ -827,7 +968,7 @@ mod tests {
         let expected_liquidity = expand_to_18_decimals(2);
         env.wcspr_pair.approve(&env.router.address(), &U256::MAX);
 
-        let (amount_token, amount_cspr) = env.router.remove_liquidity_cspr(
+        env.router.remove_liquidity_cspr(
             env.wcspr_partner.address(),
             expected_liquidity - U256::from(MINIMUM_LIQUIDITY),
             U256::from(0),
@@ -836,6 +977,82 @@ mod tests {
             u64::MAX,
         );
 
+        // Check pair TransferFrom event (user sends LP tokens to pair)
+        use odra_modules::cep18::events::{Transfer, TransferFrom};
+        assert!(env.odra_env.emitted_event(
+            &env.wcspr_pair,
+            TransferFrom {
+                spender: env.router.address(),
+                owner: env.owner,
+                recipient: env.wcspr_pair.address(),
+                amount: expected_liquidity - U256::from(MINIMUM_LIQUIDITY),
+            }
+        ));
+
+        // Check WCSPR Transfer event (pair to router)
+        assert!(env.odra_env.emitted_event(
+            &env.wcspr,
+            Transfer {
+                sender: env.wcspr_pair.address(),
+                recipient: env.router.address(),
+                amount: cspr_amount - U256::from(2000),
+            }
+        ));
+
+        // Check WCSPRPartner Transfer event (pair to router)
+        assert!(env.odra_env.emitted_event(
+            &env.wcspr_partner,
+            Transfer {
+                sender: env.wcspr_pair.address(),
+                recipient: env.router.address(),
+                amount: wcspr_partner_amount - U256::from(500),
+            }
+        ));
+
+        // Check WCSPRPartner Transfer event (router to user)
+        assert!(env.odra_env.emitted_event(
+            &env.wcspr_partner,
+            Transfer {
+                sender: env.router.address(),
+                recipient: env.owner,
+                amount: wcspr_partner_amount - U256::from(500),
+            }
+        ));
+
+        // Check Sync event (need to determine token order)
+        let token0_addr = env.wcspr_pair.token0();
+        let (reserve0, reserve1) = if token0_addr == env.wcspr_partner.address() {
+            (U256::from(500), U256::from(2000))
+        } else {
+            (U256::from(2000), U256::from(500))
+        };
+
+        assert!(env.odra_env.emitted_event(
+            &env.wcspr_pair,
+            crate::casperswap_v2_pair::events::Sync {
+                reserve0,
+                reserve1,
+            }
+        ));
+
+        // Check Burn event (need to determine token order)
+        let (amount0, amount1) = if token0_addr == env.wcspr_partner.address() {
+            (wcspr_partner_amount - U256::from(500), cspr_amount - U256::from(2000))
+        } else {
+            (cspr_amount - U256::from(2000), wcspr_partner_amount - U256::from(500))
+        };
+
+        assert!(env.odra_env.emitted_event(
+            &env.wcspr_pair,
+            crate::casperswap_v2_pair::events::Burn {
+                sender: env.router.address(),
+                amount0,
+                amount1,
+                to: env.router.address(),
+            }
+        ));
+
+        // Verify final balances
         assert_eq!(env.wcspr_pair.balance_of(&env.owner), U256::from(0));
         let total_supply_wcspr_partner = env.wcspr_partner.total_supply();
         let total_supply_wcspr = env.wcspr.total_supply();
