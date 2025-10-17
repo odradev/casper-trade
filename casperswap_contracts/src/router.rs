@@ -843,7 +843,103 @@ mod tests {
         assert_eq!(env.wcspr.balance_of(&env.owner), total_supply_wcspr - U256::from(2000));
     }
 
-    
+    #[test]
+    fn test_swap_exact_tokens_for_tokens_happy_path() {
+        let mut env = setup_router();
+
+        let token0_amount = expand_to_18_decimals(5);
+        let token1_amount = expand_to_18_decimals(10);
+        let swap_amount = expand_to_18_decimals(1);
+        let expected_output_amount = U256::from_dec_str("1662497915624478906").unwrap();
+
+        // Add liquidity first
+        add_liquidity(&mut env, token0_amount, token1_amount);
+
+        // Approve router to spend tokens
+        env.token0.approve(&env.router.address(), &U256::MAX);
+
+        // Perform swap
+        env.router.swap_exact_tokens_for_tokens(
+            swap_amount,
+            U256::from(0),
+            vec![env.token0.address(), env.token1.address()],
+            env.owner,
+            u64::MAX,
+        );
+
+        // Verify events were emitted
+        // Check token0 TransferFrom event (router calls transfer_from from owner to pair)
+        use odra_modules::cep18::events::{Transfer, TransferFrom};
+        assert!(env.odra_env.emitted_event(
+            &env.token0,
+            TransferFrom {
+                spender: env.router.address(),
+                owner: env.owner,
+                recipient: env.pair.address(),
+                amount: swap_amount,
+            }
+        ));
+        
+        // Check token1 Transfer event (pair sends output to owner)
+        assert!(env.odra_env.emitted_event(
+            &env.token1,
+            Transfer {
+                sender: env.pair.address(),
+                recipient: env.owner,
+                amount: expected_output_amount,
+            }
+        ));
+        
+        // Check Sync event
+        assert!(env.odra_env.emitted_event(
+            &env.pair,
+            crate::casperswap_v2_pair::events::Sync {
+                reserve0: token0_amount + swap_amount,
+                reserve1: token1_amount - expected_output_amount,
+            }
+        ));
+        
+        // Check Swap event
+        assert!(env.odra_env.emitted_event(
+            &env.pair,
+            crate::casperswap_v2_pair::events::Swap {
+                sender: env.router.address(),
+                amount0_in: swap_amount,
+                amount1_in: U256::zero(),
+                amount0_out: U256::zero(),
+                amount1_out: expected_output_amount,
+                to: env.owner,
+            }
+        ));
+    }
+
+    #[test]
+    fn test_swap_exact_tokens_for_tokens_amounts() {
+        let mut env = setup_router();
+
+        let token0_amount = expand_to_18_decimals(5);
+        let token1_amount = expand_to_18_decimals(10);
+        let swap_amount = expand_to_18_decimals(1);
+        let expected_output_amount = U256::from_dec_str("1662497915624478906").unwrap();
+
+        // Add liquidity first
+        add_liquidity(&mut env, token0_amount, token1_amount);
+
+        // Approve router to spend tokens
+        env.token0.approve(&env.router.address(), &U256::MAX);
+
+        // Perform swap and verify returned amounts
+        let amounts = env.router.swap_exact_tokens_for_tokens(
+            swap_amount,
+            U256::from(0),
+            vec![env.token0.address(), env.token1.address()],
+            env.owner,
+            u64::MAX,
+        );
+
+        // Verify returned amounts match expected values
+        assert_eq!(amounts, vec![swap_amount, expected_output_amount]);
+    }
 
 }
 
