@@ -782,7 +782,7 @@ mod tests {
         env.pair.approve(&env.router.address(), &U256::MAX);
 
         // Remove liquidity - should get back less than original amounts due to 0.3% fee
-        let (amount_a, amount_b) = env.router.remove_liquidity(
+        env.router.remove_liquidity(
             env.token0.address(),
             env.token1.address(),
             expected_liquidity - U256::from(MINIMUM_LIQUIDITY),
@@ -799,6 +799,50 @@ mod tests {
         assert_eq!(env.token1.balance_of(&env.owner), total_supply_token1 - U256::from(2000));
 
     }
+
+    #[test]
+    fn test_remove_liquidity_cspr() {
+        let mut env = setup_router();
+
+        let weth_partner_amount = expand_to_18_decimals(1);
+        let cspr_amount = expand_to_9_decimals(4); // CSPR has 9 decimals vs ETH's 18
+
+        env.factory.will_return_pair(Some(env.weth_pair.address()));
+
+        env.weth_partner.transfer(&env.weth_pair.address(), &weth_partner_amount);
+        env.wcspr.with_tokens(cspr_amount.to_u512()).deposit();
+        env.wcspr.transfer(&env.weth_pair.address(), &cspr_amount);
+        env.weth_pair.mint(env.owner);
+
+        let expected_liquidity = expand_to_18_decimals(2);
+        env.weth_pair.approve(&env.router.address(), &U256::MAX);
+
+        let (amount_token, amount_cspr) = env.router.remove_liquidity(
+            env.weth_partner.address(),
+            env.wcspr.address(),
+            expected_liquidity,
+            U256::from(0),
+            U256::from(0),
+            env.owner,
+            u64::MAX,
+        );
+
+        assert_eq!(env.weth_pair.balance_of(&env.owner), U256::from(0));
+        assert!(amount_token > U256::from(0));
+        assert!(amount_cspr > U256::from(0));
+        
+        let initial_weth_partner_balance = env.weth_partner.balance_of(&env.owner);
+        let initial_wcspr_balance = env.wcspr.balance_of(&env.owner);
+        let final_weth_partner_balance = env.weth_partner.balance_of(&env.owner);
+        let final_wcspr_balance = env.wcspr.balance_of(&env.owner);
+        
+        assert_eq!(final_weth_partner_balance, initial_weth_partner_balance + amount_token);
+        assert_eq!(final_wcspr_balance, initial_wcspr_balance + amount_cspr);
+        assert!(amount_token < weth_partner_amount);
+        assert!(amount_cspr < cspr_amount);
+    }
+
+    
 
 }
 
