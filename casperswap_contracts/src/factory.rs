@@ -29,7 +29,10 @@ impl Factory {
     }
 
     pub fn create_pair(&self, token_a: Address, token_b: Address) -> Address {
-        self.mock_pair.get().unwrap_or_revert(self).unwrap_or_revert_with(self, errors::FactoryError::CreatingAPairWithoutMockingIt)
+        self.mock_pair
+            .get()
+            .unwrap_or_revert(self)
+            .unwrap_or_revert_with(self, errors::FactoryError::CreatingAPairWithoutMockingIt)
     }
 
     pub fn get_pair(&self, token_a: Address, token_b: Address) -> Option<Address> {

@@ -4,7 +4,7 @@ extern crate alloc;
 
 pub mod casperswap_callee;
 pub mod casperswap_v2_pair;
-pub mod router;
 pub mod factory;
+pub mod router;
 pub mod sample_tokens;
 pub mod utils;
