@@ -46,6 +46,9 @@ impl CasperswapV2Router {
 
     /// Accepts CSPR deposits from WCSPR contract (equivalent to Solidity's receive() function)
     /// Only accepts CSPR from WCSPR contract
+    /// 
+    /// NOTE: This function is currently unused with the withdraw_to() implementation,
+    /// but kept for compatibility and potential future use cases.
     #[odra(payable)]
     pub fn deposit(&self) {
         let wcspr = self.wcspr();
@@ -254,11 +257,9 @@ impl CasperswapV2Router {
         let mut token_instance = Cep18ContractRef::new(self.env(), token);
         token_instance.transfer(&to, &amount_token);
 
-        // Withdraw CSPR from WCSPR and transfer to recipient
+        // Withdraw CSPR from WCSPR directly to recipient
         let mut wcspr_instance = self.wcspr_instance();
-        wcspr_instance.withdraw(&amount_cspr);
-        self.env()
-            .transfer_tokens(&to, &odra::uints::ToU512::to_u512(amount_cspr));
+        wcspr_instance.withdraw_to(&to, &amount_cspr);
 
         (amount_token, amount_cspr)
     }
@@ -433,13 +434,9 @@ impl CasperswapV2Router {
         let router_address = self.env().self_address();
         self._swap(amounts.clone(), path, router_address);
 
-        // Withdraw WCSPR to CSPR
+        // Withdraw WCSPR directly to user
         let mut wcspr_instance = self.wcspr_instance();
-        wcspr_instance.withdraw(&amounts[amounts.len() - 1]);
-
-        // Transfer CSPR to user
-        self.env()
-            .transfer_tokens(&to, &amounts[amounts.len() - 1].to_u512());
+        wcspr_instance.withdraw_to(&to, &amounts[amounts.len() - 1]);
 
         amounts
     }
@@ -481,13 +478,9 @@ impl CasperswapV2Router {
         let router_address = self.env().self_address();
         self._swap(amounts.clone(), path, router_address);
 
-        // Withdraw WCSPR to CSPR
+        // Withdraw WCSPR directly to user
         let mut wcspr_instance = self.wcspr_instance();
-        wcspr_instance.withdraw(&amounts[amounts.len() - 1]);
-
-        // Transfer CSPR to user
-        self.env()
-            .transfer_tokens(&to, &amounts[amounts.len() - 1].to_u512());
+        wcspr_instance.withdraw_to(&to, &amounts[amounts.len() - 1]);
 
         amounts
     }
