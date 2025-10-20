@@ -92,6 +92,7 @@ impl CasperswapV2Router {
     }
 
     /// Add liquidity to a token pair
+    #[allow(clippy::too_many_arguments)]
     pub fn add_liquidity(
         &mut self,
         token_a: Address,
@@ -119,8 +120,8 @@ impl CasperswapV2Router {
         let mut token_a_instance = Cep18ContractRef::new(self.env(), token_a);
         let mut token_b_instance = Cep18ContractRef::new(self.env(), token_b);
 
-        token_a_instance.transfer_from(&self.env().caller(), &pair_instance.address(), &amount_a);
-        token_b_instance.transfer_from(&self.env().caller(), &pair_instance.address(), &amount_b);
+        token_a_instance.transfer_from(&self.env().caller(), pair_instance.address(), &amount_a);
+        token_b_instance.transfer_from(&self.env().caller(), pair_instance.address(), &amount_b);
         let liquidity = pair_instance.mint(to);
 
         (amount_a, amount_b, liquidity)
@@ -155,17 +156,13 @@ impl CasperswapV2Router {
 
         // Transfer token from caller to pair
         let mut token_instance = Cep18ContractRef::new(self.env(), token);
-        token_instance.transfer_from(
-            &self.env().caller(),
-            &pair_instance.address(),
-            &amount_token,
-        );
+        token_instance.transfer_from(&self.env().caller(), pair_instance.address(), &amount_token);
 
         // Wrap CSPR and transfer to pair
         let mut wcspr_instance = self.wcspr_instance();
         // Pass CSPR tokens to the deposit call (like WETH.deposit{value: amountETH} in Solidity)
         wcspr_instance.with_tokens(amount_cspr.to_u512()).deposit();
-        wcspr_instance.transfer(&pair_instance.address(), &amount_cspr);
+        wcspr_instance.transfer(pair_instance.address(), &amount_cspr);
 
         // Mint liquidity tokens
         let liquidity = pair_instance.mint(to);
@@ -185,6 +182,7 @@ impl CasperswapV2Router {
     // **** REMOVE LIQUIDITY ****
 
     /// Remove liquidity from a token pair
+    #[allow(clippy::too_many_arguments)]
     pub fn remove_liquidity(
         &mut self,
         token_a: Address,
@@ -703,7 +701,7 @@ mod tests {
         pub wcspr_pair: CasperswapV2PairHostRef,
         pub owner: Address,
         pub alice: Address,
-        pub bob: Address,
+        pub _bob: Address,
     }
 
     fn setup_router() -> RouterEnv {
@@ -792,7 +790,7 @@ mod tests {
             wcspr_pair,
             owner,
             alice,
-            bob,
+            _bob: bob,
         }
     }
 

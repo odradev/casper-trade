@@ -106,7 +106,7 @@ impl Scenario for AddLiquidity {
         // Check balances
         let balance_a = token_a.balance_of(&caller);
         let balance_b = token_b.balance_of(&caller);
-        odra_cli::log(format!("\nBalances before:"));
+        odra_cli::log("\nBalances before:");
         odra_cli::log(format!(
             "  {}: {}",
             token_a.symbol(),
@@ -177,7 +177,7 @@ impl Scenario for AddLiquidity {
         // Check balances after
         let balance_a_after = token_a.balance_of(&caller);
         let balance_b_after = token_b.balance_of(&caller);
-        odra_cli::log(format!("\nBalances after:"));
+        odra_cli::log("\nBalances after:");
         odra_cli::log(format!(
             "  {}: {}",
             token_a.symbol(),

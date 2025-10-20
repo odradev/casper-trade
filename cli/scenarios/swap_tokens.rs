@@ -99,7 +99,7 @@ impl Scenario for SwapTokens {
         let balance_out_before = token_out.balance_of(&caller);
         let decimals_out = token_out.decimals();
 
-        odra_cli::log(format!("\nBalances before:"));
+        odra_cli::log("\nBalances before:");
         odra_cli::log(format!(
             "  {}: {} tokens",
             token_in.symbol(),
@@ -174,7 +174,7 @@ impl Scenario for SwapTokens {
         let balance_in_after = token_in.balance_of(&caller);
         let balance_out_after = token_out.balance_of(&caller);
 
-        odra_cli::log(format!("\nBalances after:"));
+        odra_cli::log("\nBalances after:");
         odra_cli::log(format!(
             "  {}: {} tokens",
             token_in.symbol(),
