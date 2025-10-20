@@ -263,6 +263,7 @@ dependencies = [
  "casperswap_contracts",
  "odra",
  "odra-cli",
+ "odra-modules",
 ]
 
 [[package]]

@@ -4,14 +4,16 @@
 
 use casperswap_contracts::casperswap_v2_pair::{CasperswapV2Pair, CasperswapV2PairInitArgs};
 use casperswap_contracts::factory::{Factory, FactoryInitArgs};
+use casperswap_contracts::router::{CasperswapV2Router, CasperswapV2RouterInitArgs};
 use casperswap_contracts::sample_tokens::{SampleToken, SampleTokenInitArgs};
 use odra::casper_types::U256;
-use odra::host::{HostEnv, InstallConfig};
+use odra::host::{HostEnv, InstallConfig, NoArgs};
 use odra::prelude::Addressable;
 use odra_cli::{cspr, deploy::DeployScript, DeployedContractsContainer, DeployerExt, OdraCli};
+use odra_modules::wrapped_native::WrappedNativeToken;
 
 mod scenarios;
-use scenarios::{CreatePair, MintTokens};
+use scenarios::{AddLiquidity, CreatePair, MintTokens, SetupPair, SwapTokens};
 
 /// Deploys all CasperSwap contracts
 pub struct ContractsDeployScript;
@@ -98,8 +100,40 @@ impl DeployScript for ContractsDeployScript {
             cspr!(500),
         )?;
 
-        println!("\nDeployment completed successfully!");
-        println!("Use 'create-pair' scenario to create trading pairs.");
+        // Deploy Wrapped Native Token (WCSPR)
+        let wcspr = WrappedNativeToken::load_or_deploy_with_cfg(
+            env,
+            None,
+            NoArgs,
+            InstallConfig::upgradable::<WrappedNativeToken>(),
+            container,
+            cspr!(500),
+        )?;
+
+        println!("Wrapped Native Token (WCSPR) deployed successfully!");
+
+        // Deploy Router
+        let router = CasperswapV2Router::load_or_deploy_with_cfg(
+            env,
+            None,
+            CasperswapV2RouterInitArgs {
+                factory: factory.address(),
+                wcspr: wcspr.address(),
+            },
+            InstallConfig::upgradable::<CasperswapV2Router>(),
+            container,
+            cspr!(500),
+        )?;
+
+        println!("Router deployed successfully!");
+        println!("  Factory: {:?}", router.factory());
+        println!("  WCSPR: {:?}", router.wcspr());
+
+        println!("\n✓ Deployment completed successfully!");
+        println!("\nNext steps:");
+        println!("  1. Use 'mint-tokens' to mint tokens to accounts");
+        println!("  2. Use 'add-liquidity' to add liquidity to pairs");
+        println!("  3. Use 'swap-tokens' to swap tokens");
 
         Ok(())
     }
@@ -112,10 +146,15 @@ pub fn main() {
         .deploy(ContractsDeployScript)
         .contract::<Factory>()
         .contract::<CasperswapV2Pair>()
+        .contract::<CasperswapV2Router>()
+        .contract::<WrappedNativeToken>()
         .named_contract::<SampleToken>("SampleTokenA".to_string())
         .named_contract::<SampleToken>("SampleTokenB".to_string())
         .scenario(CreatePair)
         .scenario(MintTokens)
+        .scenario(SetupPair)
+        .scenario(AddLiquidity)
+        .scenario(SwapTokens)
         .build()
         .run();
 }

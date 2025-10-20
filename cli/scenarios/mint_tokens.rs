@@ -53,8 +53,11 @@ impl Scenario for MintTokens {
                 message: "Invalid recipient address format".to_string(),
             })?;
 
-        // Convert to wei (multiply by 10^18)
-        let amount = U256::from(amount_base) * U256::exp10(18);
+        // Get token decimals
+        let decimals = token.decimals();
+
+        // Convert to token's smallest unit (using token's decimals)
+        let amount = U256::from(amount_base) * U256::exp10(decimals as usize);
 
         odra_cli::log("Minting tokens:");
         odra_cli::log(format!("  Token: {}", token.symbol()));
@@ -75,7 +78,7 @@ impl Scenario for MintTokens {
         odra_cli::log(format!("  Balance after: {}", balance_after));
         odra_cli::log(format!(
             "  Tokens added: {} tokens",
-            (balance_after - balance_before) / U256::exp10(18)
+            (balance_after - balance_before) / U256::exp10(decimals as usize)
         ));
 
         Ok(())

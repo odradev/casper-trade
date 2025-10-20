@@ -7,6 +7,7 @@ edition = "2021"
 casperswap_contracts = { path = "../casperswap_contracts" }
 odra = { workspace = true }
 odra-cli = { workspace = true }
+odra-modules = { workspace = true }
 
 [[bin]]
 name = "casperswap_cli"
