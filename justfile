@@ -1,3 +1,6 @@
+default:
+    just -l
+
 test:
     cargo odra test
     cargo odra test -b casper
