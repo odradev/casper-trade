@@ -36,9 +36,13 @@ cargo run --bin casperswap_cli -- deploy
 
 This will deploy:
 - **Factory** contract - manages pair creation and fee collection
-- **SampleToken** (instance A) - Test token A (TKNA) with 1 billion initial supply
-- **SampleToken** (instance B) - Test token B (TKNB) with 1 billion initial supply
-- **CasperswapV2Pair** - Template pair contract
+- **SampleTokenA** - Test token A (TKNA) with 1 billion initial supply
+- **SampleTokenB** - Test token B (TKNB) with 1 billion initial supply
+- **WrappedNativeToken** - Wrapped CSPR token (WCSPR)
+- **CasperswapV2Router** - Router for trading operations
+- **TokenA_TokenB** - Trading pair for TKNA/TKNB (pre-initialized)
+- **TokenA_WCSPR** - Trading pair for TKNA/WCSPR (pre-initialized)
+- **TokenB_WCSPR** - Trading pair for TKNB/WCSPR (pre-initialized)
 
 ### Contract Interactions
 
@@ -96,17 +100,17 @@ Available methods:
 
 Scenarios are high-level operations that combine multiple contract calls.
 
-#### Create a Trading Pair
+#### Setup a Trading Pair
 
-Initialize a CasperswapV2Pair contract with two token addresses:
+Create, initialize, and register a trading pair with the factory. Note that three pairs are already deployed and configured during deployment (TokenA_TokenB, TokenA_WCSPR, TokenB_WCSPR). Use this scenario only if you need to create additional custom pairs:
 
 ```bash
-cargo run --bin casperswap_cli -- scenario CreatePair \
-  --token0 hash-abc123... \
-  --token1 hash-def456...
+cargo run --bin casperswap_cli -- scenario SetupPair \
+  --token_a SampleTokenA \
+  --token_b hash-abc123...
 ```
 
-**Note:** The tokens will be automatically sorted (token0 < token1) according to Uniswap V2 convention.
+**Note:** You can use either contract names (like "SampleTokenA") or addresses (like "hash-..."). The tokens will be automatically sorted according to Uniswap V2 convention, and the pair will be registered with the factory.
 
 #### Mint Tokens
 
@@ -135,19 +139,12 @@ Refer to the `Odra.toml` file in the project root for configuration options.
 
 ### Complete Deployment and Setup
 
-1. Deploy all contracts:
+1. Deploy all contracts (includes 3 pre-configured pairs):
    ```bash
    cargo run --bin casperswap_cli -- deploy
    ```
 
-2. Initialize a pair with the deployed tokens:
-   ```bash
-   cargo run --bin casperswap_cli -- scenario CreatePair \
-     --token0 <token_A_address> \
-     --token1 <token_B_address>
-   ```
-
-3. Mint tokens to your account:
+2. Mint tokens to your account:
    ```bash
    cargo run --bin casperswap_cli -- scenario MintTokens \
      --recipient <your_address> \

@@ -2,7 +2,6 @@ use super::utils::{create_token_ref, parse_token_input};
 use casperswap_contracts::router::CasperswapV2Router;
 use odra::casper_types::{U256, U512};
 use odra::host::{HostEnv, HostRef};
-use odra::prelude::Addressable;
 use odra::schema::casper_contract_schema::NamedCLType;
 use odra::uints::ToU512;
 use odra_cli::{
@@ -51,7 +50,7 @@ impl Scenario for AddLiquidityCSPR {
         env.set_gas(50_000_000_000);
 
         // Get the router contract
-        let mut router = container.contract_ref::<CasperswapV2Router>(env, None)?;
+        let router = container.contract_ref::<CasperswapV2Router>(env, None)?;
 
         // Get args
         let token_a_input = args.get_single::<String>("token_a")?;
@@ -64,7 +63,7 @@ impl Scenario for AddLiquidityCSPR {
             parse_token_input(&token_a_input, "token_a", env, container)?;
 
         // Create token instances
-        let mut token_a = create_token_ref(token_a_address, env);
+        let token_a = create_token_ref(token_a_address, env);
 
         // Get token decimals
         let decimals_a = token_a.decimals();
@@ -75,8 +74,8 @@ impl Scenario for AddLiquidityCSPR {
         let amount_b = U256::from(amount_cspr_base) * U256::exp10(decimals_cspr as usize);
 
         // Calculate minimum amounts with slippage tolerance
-        let amount_a_min = amount_a * U256::from(100 - slippage) / U256::from(100);
-        let amount_b_min = amount_b * U256::from(100 - slippage) / U256::from(100);
+        let _amount_a_min = amount_a * U256::from(100 - slippage) / U256::from(100);
+        let _amount_b_min = amount_b * U256::from(100 - slippage) / U256::from(100);
 
         let caller = env.caller();
 

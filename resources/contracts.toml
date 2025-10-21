@@ -1,36 +1,41 @@
-last_updated = "2025-10-21T10:48:49Z"
+last_updated = "2025-10-21T14:48:25Z"
 
 [[contracts]]
 name = "Factory"
 package_name = "Factory"
-package_hash = "hash-d0159ef3d3c89f028233e4409ad5a84734ac0dba5634a8e793c5a2f265daf2af"
+package_hash = "hash-973e9e02a3a4bf62c4d0231b14ba1168be04e09a7aa5636d066f20cb004733a4"
 
 [[contracts]]
 name = "SampleToken"
 package_name = "SampleTokenA"
-package_hash = "hash-195a2bd2bd54c6bc6c7dc81a8b3b05e197e7173d2cb9658375b1f3fe8098e9a9"
+package_hash = "hash-57e78053932b68acc31852c7ec1b2246f1088654614ee9976943c06a1e9b9f43"
 
 [[contracts]]
 name = "SampleToken"
 package_name = "SampleTokenB"
-package_hash = "hash-1b8a95d4aa59ccc4c2f682f53fbc27782451b07d933b533643178eae9b78a887"
-
-[[contracts]]
-name = "CasperswapV2Pair"
-package_name = "CasperswapV2Pair"
-package_hash = "hash-322bd753845b2a911e209643af967b585f3ce7d04faa42bad80b9971ab1c64b1"
+package_hash = "hash-0e5f083f0962d292f26aee960b2e60d672d088f967aaa2617a146f8c328a775e"
 
 [[contracts]]
 name = "WrappedNativeToken"
 package_name = "WrappedNativeToken"
-package_hash = "hash-e1550d716dd9d07b38602faa6b49114cfcc997fd96bd396d8824f7607d925994"
+package_hash = "hash-8bd045fff8fc75b93a3b7efdd73166e046ebfb1ddab8e44851450951b09d102c"
 
 [[contracts]]
 name = "CasperswapV2Router"
 package_name = "CasperswapV2Router"
-package_hash = "hash-fb293895fb4fdda1777f2abea08fad38b1b92b2e8d75e39e95b568b56715853b"
+package_hash = "hash-35acf46ce63d62c4b76a16dfcb4cc1583f37064877fa4d5fa696020fd8a092dd"
 
 [[contracts]]
 name = "CasperswapV2Pair"
-package_name = "WCSPR_TokenA"
-package_hash = "hash-4cffd4050062b8eb1d7ebd73fa4baf7c9997297d1eb478b41a6433068f65a138"
+package_name = "TokenA_TokenB"
+package_hash = "hash-75aa8e5129e9b84b088e5b75ae2ce6d4f54f2fe50c8476d27a860e9ce38a55a7"
+
+[[contracts]]
+name = "CasperswapV2Pair"
+package_name = "TokenA_WCSPR"
+package_hash = "hash-c253317bbe1b1b5e054d8779de69750cd125386fee4db46bddc075543baa29ec"
+
+[[contracts]]
+name = "CasperswapV2Pair"
+package_name = "TokenB_WCSPR"
+package_hash = "hash-665155d9deaf595c634e7c30b13c299e44f24f89df74b127c57eb9f8b120b324"

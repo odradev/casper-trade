@@ -13,7 +13,7 @@ pub struct SetupPair;
 
 impl ScenarioMetadata for SetupPair {
     const NAME: &'static str = "SetupPair";
-    const DESCRIPTION: &'static str = "Create and initialize a trading pair for two tokens";
+    const DESCRIPTION: &'static str = "Create, initialize, and register a trading pair for two tokens with the factory";
 }
 
 impl Scenario for SetupPair {
