@@ -15,6 +15,8 @@ use odra_modules::wrapped_native::WrappedNativeToken;
 mod scenarios;
 use scenarios::{AddLiquidity, CreatePair, MintTokens, SetupPair, SwapTokens};
 
+use crate::scenarios::AddLiquidityCSPR;
+
 /// Deploys all CasperSwap contracts
 pub struct ContractsDeployScript;
 
@@ -100,6 +102,18 @@ impl DeployScript for ContractsDeployScript {
             cspr!(500),
         )?;
 
+        let _pair_wcspr = CasperswapV2Pair::load_or_deploy_with_cfg(
+            env,
+            Some(String::from("WCSPR_TokenA")),
+            CasperswapV2PairInitArgs {
+                factory: factory.address(),
+            },
+            InstallConfig::upgradable::<CasperswapV2Pair>(),
+            container,
+            cspr!(500),
+        )?;
+
+
         // Deploy Wrapped Native Token (WCSPR)
         let wcspr = WrappedNativeToken::load_or_deploy_with_cfg(
             env,
@@ -146,6 +160,7 @@ pub fn main() {
         .deploy(ContractsDeployScript)
         .contract::<Factory>()
         .contract::<CasperswapV2Pair>()
+        .named_contract::<CasperswapV2Pair>("WCSPR_TokenA".to_string())
         .contract::<CasperswapV2Router>()
         .contract::<WrappedNativeToken>()
         .named_contract::<SampleToken>("SampleTokenA".to_string())
@@ -154,6 +169,7 @@ pub fn main() {
         .scenario(MintTokens)
         .scenario(SetupPair)
         .scenario(AddLiquidity)
+        .scenario(AddLiquidityCSPR)
         .scenario(SwapTokens)
         .build()
         .run();
