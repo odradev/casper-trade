@@ -85,7 +85,7 @@ impl CasperswapV2Router {
                 (amount_a_desired, amount_b_optimal, pair_instance)
             } else {
                 let amount_a_optimal = self.quote(amount_b_desired, reserve_b, reserve_a);
-                if amount_a_optimal > amount_a_min {
+                if amount_a_optimal < amount_a_min {
                     self.env()
                         .revert(CasperswapV2RouterError::InsufficientAAmount);
                 }
@@ -659,9 +659,10 @@ impl CasperswapV2Router {
     /// Calculates the pair address for a pair
     fn pair_for(&self, token_a: Address, token_b: Address) -> Address {
         // In Uniswap V2, the pair address is calculated, but in Casper we get the address during the deployment
-        // So we get the pair address from the factory
+        // So we get the pair address from the factory, but we sort the tokens to avoid duplicate pairs
+        let (token0, token1) = self.sort_tokens(token_a, token_b);
         self.factory_instance()
-            .get_pair(token_a, token_b)
+            .get_pair(token0, token1)
             .unwrap_or_revert_with(&self.env(), errors::CasperswapV2RouterError::PairNotFound)
     }
 }
