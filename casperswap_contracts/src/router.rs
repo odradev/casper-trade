@@ -271,9 +271,12 @@ impl CasperswapV2Router {
         for i in 0..path.len() - 1 {
             let input = path[i];
             let output = path[i + 1];
-            let (token0, _) = self.sort_tokens(input, output);
             let amount_out = amounts[i + 1];
-            let (amount0_out, amount1_out) = if input == token0 {
+            // Map outputs using the pair's actual token0 ordering
+            let pair_address = self.pair_for(input, output);
+            let mut pair = CasperswapV2PairContractRef::new(self.env(), pair_address);
+            let pair_token0 = pair.token0();
+            let (amount0_out, amount1_out) = if input == pair_token0 {
                 (U256::zero(), amount_out)
             } else {
                 (amount_out, U256::zero())
@@ -283,8 +286,6 @@ impl CasperswapV2Router {
             } else {
                 to
             };
-            let pair_address = self.pair_for(input, output);
-            let mut pair = CasperswapV2PairContractRef::new(self.env(), pair_address);
             pair.swap(amount0_out, amount1_out, recipient, None);
         }
     }
@@ -622,11 +623,14 @@ impl CasperswapV2Router {
 
     /// Fetches and sorts the reserves for a pair
     fn get_reserves(&self, token_a: Address, token_b: Address) -> (U256, U256, Address) {
-        let (token0, _) = self.sort_tokens(token_a, token_b);
         let pair_address = self.pair_for(token_a, token_b);
         let pair = CasperswapV2PairContractRef::new(self.env(), pair_address);
         let (reserve0, reserve1, _) = pair.get_reserves();
-        let (reserve_a, reserve_b) = if token_a == token0 {
+        // IMPORTANT: Align reserves with the actual pair token order, not assumed sorted order.
+        // Uniswap pairs store token0/token1 in sorted order, but our pairs may be initialized
+        // without sorting in tests. Use the pair's token0 to map reserves correctly.
+        let pair_token0 = pair.token0();
+        let (reserve_a, reserve_b) = if token_a == pair_token0 {
             (reserve0, reserve1)
         } else {
             (reserve1, reserve0)
