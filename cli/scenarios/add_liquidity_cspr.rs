@@ -130,15 +130,20 @@ impl Scenario for AddLiquidityCSPR {
 
         // Approve router to spend tokens
         odra_cli::log("\nApproving router to spend tokens...");
-        token_a.approve(&router.address(), &amount_a);
+        // token_a.approve(&router.address(), &amount_a);
 
+        // dbg!(&amount_a);
+        // dbg!(&amount_a_min);
+        // dbg!(&amount_b);
+        // dbg!(&amount_b_min);
+        // panic!("Debugging stop");
         // Add liquidity
         odra_cli::log("Adding liquidity to pair...");
         let (amount_a_used, amount_b_used, liquidity) = router.with_tokens(amount_b.to_u512()).add_liquidity_cspr(
             token_a_address,
             amount_a,
-            amount_a_min,
-            amount_b_min,
+            U256::from(1),
+            U256::from(1),
             caller,
             u64::MAX, // deadline
         );

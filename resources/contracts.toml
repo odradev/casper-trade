@@ -1,0 +1,36 @@
+last_updated = "2025-10-21T10:48:49Z"
+
+[[contracts]]
+name = "Factory"
+package_name = "Factory"
+package_hash = "hash-d0159ef3d3c89f028233e4409ad5a84734ac0dba5634a8e793c5a2f265daf2af"
+
+[[contracts]]
+name = "SampleToken"
+package_name = "SampleTokenA"
+package_hash = "hash-195a2bd2bd54c6bc6c7dc81a8b3b05e197e7173d2cb9658375b1f3fe8098e9a9"
+
+[[contracts]]
+name = "SampleToken"
+package_name = "SampleTokenB"
+package_hash = "hash-1b8a95d4aa59ccc4c2f682f53fbc27782451b07d933b533643178eae9b78a887"
+
+[[contracts]]
+name = "CasperswapV2Pair"
+package_name = "CasperswapV2Pair"
+package_hash = "hash-322bd753845b2a911e209643af967b585f3ce7d04faa42bad80b9971ab1c64b1"
+
+[[contracts]]
+name = "WrappedNativeToken"
+package_name = "WrappedNativeToken"
+package_hash = "hash-e1550d716dd9d07b38602faa6b49114cfcc997fd96bd396d8824f7607d925994"
+
+[[contracts]]
+name = "CasperswapV2Router"
+package_name = "CasperswapV2Router"
+package_hash = "hash-fb293895fb4fdda1777f2abea08fad38b1b92b2e8d75e39e95b568b56715853b"
+
+[[contracts]]
+name = "CasperswapV2Pair"
+package_name = "WCSPR_TokenA"
+package_hash = "hash-4cffd4050062b8eb1d7ebd73fa4baf7c9997297d1eb478b41a6433068f65a138"
