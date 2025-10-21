@@ -46,7 +46,7 @@ impl CasperswapV2Router {
 
     /// Accepts CSPR deposits from WCSPR contract (equivalent to Solidity's receive() function)
     /// Only accepts CSPR from WCSPR contract
-    /// 
+    ///
     /// NOTE: This function is currently unused with the withdraw_to() implementation,
     /// but kept for compatibility and potential future use cases.
     #[odra(payable)]
@@ -775,7 +775,11 @@ mod tests {
 
         // Set up factory to create pairs
         factory.will_create_pair(token0.address(), token1.address(), pair.address());
-        factory.will_create_pair(wcspr.address(), wcspr_partner.address(), wcspr_pair.address());
+        factory.will_create_pair(
+            wcspr.address(),
+            wcspr_partner.address(),
+            wcspr_pair.address(),
+        );
 
         RouterEnv {
             odra_env: env,
@@ -1059,7 +1063,11 @@ mod tests {
         );
         cspr_pair.initialize(env.token0.address(), env.wcspr.address());
 
-        env.factory.will_create_pair(env.token0.address(), env.wcspr.address(), cspr_pair.address());
+        env.factory.will_create_pair(
+            env.token0.address(),
+            env.wcspr.address(),
+            cspr_pair.address(),
+        );
 
         let token_amount = expand_to_18_decimals(1);
         let cspr_amount = expand_to_9_decimals(4);

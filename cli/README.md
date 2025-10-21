@@ -28,10 +28,19 @@ cargo run --bin casperswap_cli -- --help
 
 ### Deployment
 
-Deploy all CasperSwap contracts to the network:
+#### Deploy to Local Node (NCTL)
+
+For local development and testing using nctl:
 
 ```bash
-cargo run --bin casperswap_cli -- deploy
+# First, ensure nctl container is running
+docker ps | grep nctl
+
+# Clear any cached testnet contracts (important!)
+rm -f resources/contracts.toml
+
+# Deploy all contracts
+just cli-on-nctl deploy
 ```
 
 This will deploy:
@@ -43,6 +52,74 @@ This will deploy:
 - **TokenA_TokenB** - Trading pair for TKNA/TKNB (pre-initialized)
 - **TokenA_WCSPR** - Trading pair for TKNA/WCSPR (pre-initialized)
 - **TokenB_WCSPR** - Trading pair for TKNB/WCSPR (pre-initialized)
+
+#### Deploy to Testnet
+
+```bash
+# Clear any cached local contracts (important!)
+rm -f resources/contracts.toml
+
+# Deploy all contracts
+cargo run --bin casperswap_cli -- deploy
+```
+
+**Important:** The CLI caches deployed contract addresses in `resources/contracts.toml`. When switching between environments (testnet ↔ nctl), always clear this file first to avoid address conflicts.
+
+### Quick Start: Add Liquidity
+
+After deployment, you can immediately add liquidity to any of the pre-deployed pairs:
+
+#### Add Liquidity with CSPR
+
+```bash
+# Add 100 TKNA + 50 CSPR to TokenA-WCSPR pair
+just cli-on-nctl scenario AddLiquidityCSPR \
+  --token_a SampleTokenA \
+  --amount_a 100 \
+  --amount_cspr 50
+```
+
+#### Add Liquidity with Two Tokens
+
+```bash
+# Add 100 TKNA + 200 TKNB to TokenA-TokenB pair
+just cli-on-nctl scenario AddLiquidity \
+  --token_a SampleTokenA \
+  --token_b SampleTokenB \
+  --amount_a 100 \
+  --amount_b 200
+```
+
+**Note:** The CLI uses the deployer's account, which already has the initial token supply (1 billion tokens of each).
+
+### Complete Workflow Example
+
+Here's a complete workflow for deploying and using CasperSwap on local nctl:
+
+```bash
+# 1. Clear cache and deploy
+rm -f resources/contracts.toml
+just cli-on-nctl deploy
+
+# 2. Add liquidity to TokenA-WCSPR pair
+just cli-on-nctl scenario AddLiquidityCSPR \
+  --token_a SampleTokenA \
+  --amount_a 1000 \
+  --amount_cspr 500
+
+# 3. Add liquidity to TokenA-TokenB pair
+just cli-on-nctl scenario AddLiquidity \
+  --token_a SampleTokenA \
+  --token_b SampleTokenB \
+  --amount_a 1000 \
+  --amount_b 1000
+
+# 4. Swap tokens (example)
+just cli-on-nctl scenario SwapTokens \
+  --token_in SampleTokenA \
+  --token_out SampleTokenB \
+  --amount_in 10
+```
 
 ### Contract Interactions
 
@@ -139,12 +216,11 @@ Refer to the `Odra.toml` file in the project root for configuration options.
 
 ### Complete Deployment and Setup
 
-1. Deploy all contracts (includes 3 pre-configured pairs):
-   ```bash
-   cargo run --bin casperswap_cli -- deploy
-   ```
+See the [Complete Workflow Example](#complete-workflow-example) section above for a step-by-step guide.
 
-2. Mint tokens to your account:
+### Mint Tokens to Another Account
+
+If you need to mint tokens to another account:
    ```bash
    cargo run --bin casperswap_cli -- scenario MintTokens \
      --recipient <your_address> \
@@ -216,11 +292,35 @@ impl Scenario for YourScenario {
 
 ## Troubleshooting
 
+### "Couldn't query for entity address value" Error
+
+This error occurs when the CLI tries to use cached contract addresses from a different environment.
+
+**Problem:** You deployed to testnet, and now trying to use nctl (or vice versa). The CLI is reading cached addresses from `resources/contracts.toml` that don't exist in the current environment.
+
+**Solution:** Clear the cache before switching environments:
+```bash
+rm -f resources/contracts.toml
+```
+
+Then deploy again to the current environment.
+
+**Why this happens:** The CLI caches deployed contract addresses to avoid unnecessary redeployments. However, testnet and local nctl use different blockchain networks with different addresses.
+
+**Best Practice:** Always clear `resources/contracts.toml` when switching between:
+- Testnet ↔ Local NCTL
+- Different nctl instances (after restart)
+- Different testnets
+
 ### Contract Not Found
 
 If you get a "contract not found" error, make sure you've run the deployment first:
 
 ```bash
+# For local nctl
+just cli-on-nctl deploy
+
+# For testnet
 cargo run --bin casperswap_cli -- deploy
 ```
 
@@ -231,6 +331,15 @@ If transactions fail due to gas limits, you can adjust the gas in the scenario o
 ### Invalid Address Format
 
 Addresses should be in the format `hash-<hex>` or `account-hash-<hex>`.
+
+### Approval/Transfer Errors (User error: 60002)
+
+If you get error 60002 when adding liquidity, it usually means the router doesn't have approval to spend your tokens. The AddLiquidity scenarios should handle this automatically, but if you're calling contracts directly, remember to approve first:
+
+```bash
+just cli-on-nctl named-contract SampleTokenA approve \
+  <router_address> <amount>
+```
 
 ## License
 

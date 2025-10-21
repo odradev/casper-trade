@@ -2,6 +2,7 @@ use super::utils::{create_token_ref, parse_token_input};
 use casperswap_contracts::router::CasperswapV2Router;
 use odra::casper_types::{U256, U512};
 use odra::host::{HostEnv, HostRef};
+use odra::prelude::Addressable;
 use odra::schema::casper_contract_schema::NamedCLType;
 use odra::uints::ToU512;
 use odra_cli::{
@@ -63,7 +64,7 @@ impl Scenario for AddLiquidityCSPR {
             parse_token_input(&token_a_input, "token_a", env, container)?;
 
         // Create token instances
-        let token_a = create_token_ref(token_a_address, env);
+        let mut token_a = create_token_ref(token_a_address, env);
 
         // Get token decimals
         let decimals_a = token_a.decimals();
@@ -129,7 +130,7 @@ impl Scenario for AddLiquidityCSPR {
 
         // Approve router to spend tokens
         odra_cli::log("\nApproving router to spend tokens...");
-        // token_a.approve(&router.address(), &amount_a);
+        token_a.approve(&router.address(), &amount_a);
 
         // dbg!(&amount_a);
         // dbg!(&amount_a_min);
@@ -138,14 +139,15 @@ impl Scenario for AddLiquidityCSPR {
         // panic!("Debugging stop");
         // Add liquidity
         odra_cli::log("Adding liquidity to pair...");
-        let (amount_a_used, amount_b_used, liquidity) = router.with_tokens(amount_b.to_u512()).add_liquidity_cspr(
-            token_a_address,
-            amount_a,
-            U256::from(1),
-            U256::from(1),
-            caller,
-            u64::MAX, // deadline
-        );
+        let (amount_a_used, amount_b_used, liquidity) =
+            router.with_tokens(amount_b.to_u512()).add_liquidity_cspr(
+                token_a_address,
+                amount_a,
+                U256::from(1),
+                U256::from(1),
+                caller,
+                u64::MAX, // deadline
+            );
 
         odra_cli::log("\n✓ Liquidity added successfully!");
         odra_cli::log(format!(

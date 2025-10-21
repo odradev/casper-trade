@@ -37,7 +37,8 @@ impl Factory {
     /// In the mock implementation, this looks up the pre-configured pair and stores it.
     pub fn create_pair(&mut self, token_a: Address, token_b: Address) -> Address {
         let (token0, token1) = self.sort_tokens(token_a, token_b);
-        let pair = self.mock_pairs
+        let pair = self
+            .mock_pairs
             .get(&(token0, token1))
             .unwrap_or_revert_with(self, errors::FactoryError::CreatingAPairWithoutMockingIt);
         self.pairs.set(&(token0, token1), pair);
