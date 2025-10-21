@@ -2,8 +2,8 @@
 #![cfg_attr(not(test), no_main)]
 extern crate alloc;
 
-pub mod casperswap_callee;
-pub mod casperswap_v2_pair;
+pub mod casper_trade_callee;
+pub mod casper_trade_v2_pair;
 pub mod factory;
 pub mod router;
 pub mod sample_tokens;

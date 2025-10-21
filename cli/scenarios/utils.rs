@@ -1,4 +1,4 @@
-use casperswap_contracts::sample_tokens::SampleToken;
+use casper_trade_contracts::sample_tokens::SampleToken;
 use odra::host::{HostEnv, HostRef};
 use odra::prelude::{Address, Addressable};
 use odra_cli::{scenario::Error, ContractProvider, DeployedContractsContainer};

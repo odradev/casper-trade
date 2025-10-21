@@ -1,4 +1,4 @@
-use casperswap_contracts::sample_tokens::SampleToken;
+use casper_trade_contracts::sample_tokens::SampleToken;
 use odra::casper_types::U256;
 use odra::host::HostEnv;
 use odra::prelude::Address;

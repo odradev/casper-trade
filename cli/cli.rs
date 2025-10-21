@@ -1,11 +1,11 @@
-//! CLI tool for CasperSwap smart contracts
+//! CLI tool for Casper Trade smart contracts
 //!
-//! This CLI provides deployment and interaction capabilities for the CasperSwap DEX contracts.
+//! This CLI provides deployment and interaction capabilities for the Casper Trade DEX contracts.
 
-use casperswap_contracts::casperswap_v2_pair::{CasperswapV2Pair, CasperswapV2PairInitArgs};
-use casperswap_contracts::factory::{Factory, FactoryInitArgs};
-use casperswap_contracts::router::{CasperswapV2Router, CasperswapV2RouterInitArgs};
-use casperswap_contracts::sample_tokens::{SampleToken, SampleTokenInitArgs};
+use casper_trade_contracts::casper_trade_v2_pair::{CasperTradeV2Pair, CasperTradeV2PairInitArgs};
+use casper_trade_contracts::factory::{Factory, FactoryInitArgs};
+use casper_trade_contracts::router::{CasperTradeV2Router, CasperTradeV2RouterInitArgs};
+use casper_trade_contracts::sample_tokens::{SampleToken, SampleTokenInitArgs};
 use odra::casper_types::U256;
 use odra::host::{HostEnv, InstallConfig, NoArgs};
 use odra::prelude::Addressable;
@@ -17,7 +17,7 @@ use scenarios::{AddLiquidity, MintTokens, SetupPair, SwapTokens};
 
 use crate::scenarios::AddLiquidityCSPR;
 
-/// Deploys all CasperSwap contracts
+/// Deploys all Casper Trade contracts
 pub struct ContractsDeployScript;
 
 impl DeployScript for ContractsDeployScript {
@@ -103,14 +103,14 @@ impl DeployScript for ContractsDeployScript {
         println!("Wrapped Native Token (WCSPR) deployed successfully!");
 
         // Deploy Router
-        let router = CasperswapV2Router::load_or_deploy_with_cfg(
+        let router = CasperTradeV2Router::load_or_deploy_with_cfg(
             env,
             None,
-            CasperswapV2RouterInitArgs {
+            CasperTradeV2RouterInitArgs {
                 factory: factory.address(),
                 wcspr: wcspr.address(),
             },
-            InstallConfig::upgradable::<CasperswapV2Router>(),
+            InstallConfig::upgradable::<CasperTradeV2Router>(),
             container,
             cspr!(500),
         )?;
@@ -123,13 +123,13 @@ impl DeployScript for ContractsDeployScript {
         println!("\nDeploying trading pairs...");
 
         // Deploy TokenA-TokenB pair
-        let mut pair_a_b = CasperswapV2Pair::load_or_deploy_with_cfg(
+        let mut pair_a_b = CasperTradeV2Pair::load_or_deploy_with_cfg(
             env,
             Some("TokenA_TokenB".to_string()),
-            CasperswapV2PairInitArgs {
+            CasperTradeV2PairInitArgs {
                 factory: factory.address(),
             },
-            InstallConfig::upgradable::<CasperswapV2Pair>(),
+            InstallConfig::upgradable::<CasperTradeV2Pair>(),
             container,
             cspr!(500),
         )?;
@@ -138,13 +138,13 @@ impl DeployScript for ContractsDeployScript {
         println!("  ✓ TokenA-TokenB pair deployed and initialized");
 
         // Deploy TokenA-WCSPR pair
-        let mut pair_a_wcspr = CasperswapV2Pair::load_or_deploy_with_cfg(
+        let mut pair_a_wcspr = CasperTradeV2Pair::load_or_deploy_with_cfg(
             env,
             Some("TokenA_WCSPR".to_string()),
-            CasperswapV2PairInitArgs {
+            CasperTradeV2PairInitArgs {
                 factory: factory.address(),
             },
-            InstallConfig::upgradable::<CasperswapV2Pair>(),
+            InstallConfig::upgradable::<CasperTradeV2Pair>(),
             container,
             cspr!(500),
         )?;
@@ -153,13 +153,13 @@ impl DeployScript for ContractsDeployScript {
         println!("  ✓ TokenA-WCSPR pair deployed and initialized");
 
         // Deploy TokenB-WCSPR pair
-        let mut pair_b_wcspr = CasperswapV2Pair::load_or_deploy_with_cfg(
+        let mut pair_b_wcspr = CasperTradeV2Pair::load_or_deploy_with_cfg(
             env,
             Some("TokenB_WCSPR".to_string()),
-            CasperswapV2PairInitArgs {
+            CasperTradeV2PairInitArgs {
                 factory: factory.address(),
             },
-            InstallConfig::upgradable::<CasperswapV2Pair>(),
+            InstallConfig::upgradable::<CasperTradeV2Pair>(),
             container,
             cspr!(500),
         )?;
@@ -190,16 +190,16 @@ impl DeployScript for ContractsDeployScript {
 /// Main function to run the CLI tool.
 pub fn main() {
     OdraCli::new()
-        .about("CasperSwap CLI - Automated Market Maker on Casper Network")
+        .about("Casper Trade CLI - Automated Market Maker on Casper Network")
         .deploy(ContractsDeployScript)
         .contract::<Factory>()
-        .contract::<CasperswapV2Router>()
+        .contract::<CasperTradeV2Router>()
         .contract::<WrappedNativeToken>()
         .named_contract::<SampleToken>("SampleTokenA".to_string())
         .named_contract::<SampleToken>("SampleTokenB".to_string())
-        .named_contract::<CasperswapV2Pair>("TokenA_TokenB".to_string())
-        .named_contract::<CasperswapV2Pair>("TokenA_WCSPR".to_string())
-        .named_contract::<CasperswapV2Pair>("TokenB_WCSPR".to_string())
+        .named_contract::<CasperTradeV2Pair>("TokenA_TokenB".to_string())
+        .named_contract::<CasperTradeV2Pair>("TokenA_WCSPR".to_string())
+        .named_contract::<CasperTradeV2Pair>("TokenB_WCSPR".to_string())
         .scenario(MintTokens)
         .scenario(SetupPair)
         .scenario(AddLiquidity)

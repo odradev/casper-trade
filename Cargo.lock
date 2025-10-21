@@ -260,7 +260,7 @@ checksum = "d71b6127be86fdcfddb610f7182ac57211d4b18a3e9c82eb2d17662f2227ad6a"
 name = "casper-cli"
 version = "0.1.0"
 dependencies = [
- "casperswap_contracts",
+ "casper_trade_contracts",
  "odra",
  "odra-cli",
  "odra-modules",
@@ -537,7 +537,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "casperswap_contracts"
+name = "casper_trade_contracts"
 version = "0.1.0"
 dependencies = [
  "odra",

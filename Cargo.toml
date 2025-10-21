@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "cli",
-    "casperswap_contracts",
+    "casper_trade_contracts",
 ]
 resolver = "2"
 

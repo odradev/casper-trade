@@ -1,4 +1,4 @@
-//! Sample CEP-18 token for testing CasperswapV2Pair
+//! Sample CEP-18 token for testing CasperTradeV2Pair
 use odra::casper_types::U256;
 use odra::prelude::*;
 use odra_modules::access::Ownable;

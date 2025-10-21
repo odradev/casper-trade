@@ -1,7 +1,7 @@
 use odra::prelude::OdraError;
 
 #[odra::odra_error]
-pub enum CasperswapV2RouterError {
+pub enum CasperTradeV2RouterError {
     Misconfigured = 21000,
     Expired = 21001,
     InsufficientAAmount = 21002,
@@ -13,9 +13,9 @@ pub enum CasperswapV2RouterError {
     InsufficientBalance = 21008,
 }
 
-// Library error types merged from casperswap_v2_library
+// Library error types merged from casper_trade_v2_library
 #[odra::odra_error]
-pub enum CasperswapV2LibraryError {
+pub enum CasperTradeV2LibraryError {
     IdenticalAddresses = 1,
     ZeroAddress = 2,
     InsufficientAmount = 3,

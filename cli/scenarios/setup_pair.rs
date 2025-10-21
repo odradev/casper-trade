@@ -1,6 +1,6 @@
 use super::utils::{create_token_ref, parse_token_input};
-use casperswap_contracts::casperswap_v2_pair::CasperswapV2Pair;
-use casperswap_contracts::factory::Factory;
+use casper_trade_contracts::casper_trade_v2_pair::CasperTradeV2Pair;
+use casper_trade_contracts::factory::Factory;
 use odra::host::HostEnv;
 use odra::prelude::Addressable;
 use odra::schema::casper_contract_schema::NamedCLType;
@@ -59,7 +59,7 @@ impl Scenario for SetupPair {
 
         // Get factory and pair
         let mut factory = container.contract_ref::<Factory>(env, None)?;
-        let mut pair = container.contract_ref::<CasperswapV2Pair>(env, None)?;
+        let mut pair = container.contract_ref::<CasperTradeV2Pair>(env, None)?;
 
         odra_cli::log("Setting up trading pair:");
         odra_cli::log(format!(

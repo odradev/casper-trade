@@ -131,7 +131,7 @@ token_instance.transfer_from(&caller, &pair_address, &amount);
 pub fn deposit(&mut self) {  // Was: &self
     let wcspr = self.wcspr();
     if self.env().caller() != wcspr {
-        self.env().revert(CasperswapV2RouterError::Misconfigured);
+        self.env().revert(CasperTradeV2RouterError::Misconfigured);
     }
 }
 ```

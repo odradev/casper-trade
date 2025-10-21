@@ -1,10 +1,10 @@
-# CasperSwap CLI
+# Casper Trade CLI
 
-A command-line interface tool for deploying and interacting with CasperSwap smart contracts on the Casper Network.
+A command-line interface tool for deploying and interacting with Casper Trade smart contracts on the Casper Network.
 
 ## Overview
 
-CasperSwap is an automated market maker (AMM) DEX implementation based on Uniswap V2, built using the Odra framework. This CLI tool provides easy deployment and management of CasperSwap contracts.
+Casper Trade is an automated market maker (AMM) DEX implementation based on Uniswap V2, built using the Odra framework. This CLI tool provides easy deployment and management of Casper Trade contracts.
 
 ## Installation
 
@@ -14,7 +14,7 @@ From the project root:
 cargo build --release
 ```
 
-The binary will be available at `target/release/casperswap_cli`.
+The binary will be available at `target/release/casper_trade_cli`.
 
 ## Usage
 
@@ -23,7 +23,7 @@ The binary will be available at `target/release/casperswap_cli`.
 To see all available commands:
 
 ```bash
-cargo run --bin casperswap_cli -- --help
+cargo run --bin casper_trade_cli -- --help
 ```
 
 ### Deployment
@@ -48,7 +48,7 @@ This will deploy:
 - **SampleTokenA** - Test token A (TKNA) with 1 billion initial supply
 - **SampleTokenB** - Test token B (TKNB) with 1 billion initial supply
 - **WrappedNativeToken** - Wrapped CSPR token (WCSPR)
-- **CasperswapV2Router** - Router for trading operations
+- **CasperTradeV2Router** - Router for trading operations
 - **TokenA_TokenB** - Trading pair for TKNA/TKNB (pre-initialized)
 - **TokenA_WCSPR** - Trading pair for TKNA/WCSPR (pre-initialized)
 - **TokenB_WCSPR** - Trading pair for TKNB/WCSPR (pre-initialized)
@@ -60,7 +60,7 @@ This will deploy:
 rm -f resources/contracts.toml
 
 # Deploy all contracts
-cargo run --bin casperswap_cli -- deploy
+cargo run --bin casper_trade_cli -- deploy
 ```
 
 **Important:** The CLI caches deployed contract addresses in `resources/contracts.toml`. When switching between environments (testnet ↔ nctl), always clear this file first to avoid address conflicts.
@@ -94,7 +94,7 @@ just cli-on-nctl scenario AddLiquidity \
 
 ### Complete Workflow Example
 
-Here's a complete workflow for deploying and using CasperSwap on local nctl:
+Here's a complete workflow for deploying and using Casper Trade on local nctl:
 
 ```bash
 # 1. Clear cache and deploy
@@ -126,17 +126,17 @@ just cli-on-nctl scenario SwapTokens \
 #### Interact with Factory
 
 ```bash
-cargo run --bin casperswap_cli -- contract Factory <method> [args...]
+cargo run --bin casper_trade_cli -- contract Factory <method> [args...]
 ```
 
 Available methods:
 - `fee_to` - Get the current fee collector address
 - `set_fee_to <address>` - Set the fee collector address
 
-#### Interact with CasperswapV2Pair
+#### Interact with CasperTradeV2Pair
 
 ```bash
-cargo run --bin casperswap_cli -- contract CasperswapV2Pair <method> [args...]
+cargo run --bin casper_trade_cli -- contract CasperTradeV2Pair <method> [args...]
 ```
 
 Key methods:
@@ -153,13 +153,13 @@ The same `SampleToken` contract is deployed twice with different names and symbo
 Interact with SampleTokenA (TKNA):
 
 ```bash
-cargo run --bin casperswap_cli -- named-contract SampleTokenA <method> [args...]
+cargo run --bin casper_trade_cli -- named-contract SampleTokenA <method> [args...]
 ```
 
 Interact with SampleTokenB (TKNB):
 
 ```bash
-cargo run --bin casperswap_cli -- named-contract SampleTokenB <method> [args...]
+cargo run --bin casper_trade_cli -- named-contract SampleTokenB <method> [args...]
 ```
 
 Available methods:
@@ -182,7 +182,7 @@ Scenarios are high-level operations that combine multiple contract calls.
 Create, initialize, and register a trading pair with the factory. Note that three pairs are already deployed and configured during deployment (TokenA_TokenB, TokenA_WCSPR, TokenB_WCSPR). Use this scenario only if you need to create additional custom pairs:
 
 ```bash
-cargo run --bin casperswap_cli -- scenario SetupPair \
+cargo run --bin casper_trade_cli -- scenario SetupPair \
   --token_a SampleTokenA \
   --token_b hash-abc123...
 ```
@@ -194,7 +194,7 @@ cargo run --bin casperswap_cli -- scenario SetupPair \
 Mint tokens to a specified address (requires owner privileges):
 
 ```bash
-cargo run --bin casperswap_cli -- scenario MintTokens \
+cargo run --bin casper_trade_cli -- scenario MintTokens \
   --recipient hash-abc123... \
   --amount 1000
 ```
@@ -222,26 +222,26 @@ See the [Complete Workflow Example](#complete-workflow-example) section above fo
 
 If you need to mint tokens to another account:
    ```bash
-   cargo run --bin casperswap_cli -- scenario MintTokens \
+   cargo run --bin casper_trade_cli -- scenario MintTokens \
      --recipient <your_address> \
      --amount 10000
    ```
 
 4. Approve the pair contract to spend your tokens:
    ```bash
-   cargo run --bin casperswap_cli -- named-contract SampleTokenA approve \
+   cargo run --bin casper_trade_cli -- named-contract SampleTokenA approve \
      <pair_address> 1000000000000000000000
    ```
 
 5. Add liquidity by transferring tokens to the pair and calling mint:
    ```bash
-   cargo run --bin casperswap_cli -- named-contract SampleTokenA transfer \
+   cargo run --bin casper_trade_cli -- named-contract SampleTokenA transfer \
      <pair_address> 100000000000000000000
    
-   cargo run --bin casperswap_cli -- named-contract SampleTokenB transfer \
+   cargo run --bin casper_trade_cli -- named-contract SampleTokenB transfer \
      <pair_address> 100000000000000000000
    
-   cargo run --bin casperswap_cli -- contract CasperswapV2Pair mint \
+   cargo run --bin casper_trade_cli -- contract CasperTradeV2Pair mint \
      <your_address>
    ```
 
@@ -321,7 +321,7 @@ If you get a "contract not found" error, make sure you've run the deployment fir
 just cli-on-nctl deploy
 
 # For testnet
-cargo run --bin casperswap_cli -- deploy
+cargo run --bin casper_trade_cli -- deploy
 ```
 
 ### Insufficient Gas

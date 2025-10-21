@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-casperswap_contracts = { path = "../casperswap_contracts" }
+casper_trade_contracts = { path = "../casper_trade_contracts" }
 odra = { workspace = true }
 odra-cli = { workspace = true }
 odra-modules = { workspace = true }
 
 [[bin]]
-name = "casperswap_cli"
+name = "casper_trade_cli"
 path = "cli.rs"

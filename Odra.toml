@@ -1,11 +1,11 @@
 [[contracts]]
-fqn = "casperswap_contracts::casperswap_v2_pair::CasperswapV2Pair"
+fqn = "casper_trade_contracts::casper_trade_v2_pair::CasperTradeV2Pair"
 
 [[contracts]]
-fqn = "casperswap_contracts::sample_tokens::SampleToken"
+fqn = "casper_trade_contracts::sample_tokens::SampleToken"
 
 [[contracts]]
-fqn = "casperswap_contracts::factory::Factory"
+fqn = "casper_trade_contracts::factory::Factory"
 
 [[contracts]]
-fqn = "casperswap_contracts::router::CasperswapV2Router"
+fqn = "casper_trade_contracts::router::CasperTradeV2Router"

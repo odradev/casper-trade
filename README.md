@@ -1,6 +1,6 @@
-# CasperSwap
+# Casper Trade
 
-A decentralized exchange (DEX) implementation based on Uniswap V2, built for the Casper Network using the Odra framework. CasperSwap provides automated market maker (AMM) functionality with liquidity pools, token swaps, and yield farming capabilities.
+A decentralized exchange (DEX) implementation based on Uniswap V2, built for the Casper Network using the Odra framework. Casper Trade provides automated market maker (AMM) functionality with liquidity pools, token swaps, and yield farming capabilities.
 
 ## Features
 
@@ -20,8 +20,8 @@ A decentralized exchange (DEX) implementation based on Uniswap V2, built for the
 
 1. Clone the repository:
 ```bash
-git clone git@github.com:odradev/casperswap.git
-cd casperswap
+git clone git@github.com:odradev/casper-trade.git
+cd casper-trade
 ```
 
 2. Install cargo-odra:
@@ -110,7 +110,7 @@ cargo odra build -b casper
 ```
 
 The compiled WASM files will be placed in the `wasm/` directory:
-- `CasperswapV2Pair.wasm` - Main pair contract
+- `CasperTradeV2Pair.wasm` - Main pair contract
 - `Factory.wasm` - Factory contract for pair management
 - `SampleToken.wasm` - Sample CEP-18 token contract
 
@@ -133,7 +133,7 @@ just test
 
 ## CLI Tool
 
-The CasperSwap CLI provides easy deployment and interaction with contracts. See [CLI documentation](cli/README.md) for detailed usage.
+The Casper Trade CLI provides easy deployment and interaction with contracts. See [CLI documentation](cli/README.md) for detailed usage.
 
 ### Basic Usage
 ```bash

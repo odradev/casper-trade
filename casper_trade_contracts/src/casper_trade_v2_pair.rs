@@ -6,9 +6,9 @@ use odra::{
 use odra_modules::cep18_token::{Cep18, Cep18ContractRef};
 
 use crate::{
-    casperswap_callee::CasperswapCalleeContractRef,
-    casperswap_v2_pair::{
-        errors::CasperswapV2PairError,
+    casper_trade_callee::CasperTradeCalleeContractRef,
+    casper_trade_v2_pair::{
+        errors::CasperTradeV2PairError,
         events::{Burn, Mint, Swap, Sync},
     },
     factory::FactoryContractRef,
@@ -19,9 +19,9 @@ pub mod events;
 
 pub const MINIMUM_LIQUIDITY: u64 = 1000;
 
-/// CasperswapV2Pair contract - implementation based on Uniswap V2
+/// CasperTradeV2Pair contract - implementation based on Uniswap V2
 #[odra::module(events = [Mint, Burn, Swap, Sync])]
-pub struct CasperswapV2Pair {
+pub struct CasperTradeV2Pair {
     pub token: SubModule<Cep18>,
     pub factory: Var<Address>,
     pub token0: Var<Address>,
@@ -36,7 +36,7 @@ pub struct CasperswapV2Pair {
 
 /// Module implementation
 #[odra::module]
-impl CasperswapV2Pair {
+impl CasperTradeV2Pair {
     delegate! {
         to self.token {
             fn total_supply(&self) -> U256;
@@ -51,7 +51,7 @@ impl CasperswapV2Pair {
     pub fn init(&mut self, factory: Address) {
         self.factory.set(factory);
         let symbol = "LP";
-        let name = "CasperswapV2Pair";
+        let name = "CasperTradeV2Pair";
         let decimals = 18;
         let initial_supply = U256::from(0);
         self.token.init(
@@ -64,8 +64,8 @@ impl CasperswapV2Pair {
 
     pub fn initialize(&mut self, token0: Address, token1: Address) {
         // TODO: Uncomment this when the factory is implemented
-        // if self.factory.get_or_revert_with(CasperswapV2PairError::Misconfigured) != self.env().caller() {
-        //     self.env().revert(CasperswapV2PairError::Forbidden);
+        // if self.factory.get_or_revert_with(CasperTradeV2PairError::Misconfigured) != self.env().caller() {
+        //     self.env().revert(CasperTradeV2PairError::Forbidden);
         // }
         self.token0.set(token0);
         self.token1.set(token1);
@@ -100,7 +100,7 @@ impl CasperswapV2Pair {
 
         if liquidity.is_zero() {
             self.env()
-                .revert(CasperswapV2PairError::InsufficientLiquidityMinted);
+                .revert(CasperTradeV2PairError::InsufficientLiquidityMinted);
         }
 
         self.token.raw_mint(&to, &liquidity);
@@ -148,7 +148,7 @@ impl CasperswapV2Pair {
         // Require both amounts > 0
         if amount0.is_zero() || amount1.is_zero() {
             self.env()
-                .revert(CasperswapV2PairError::InsufficientLiquidityBurned);
+                .revert(CasperTradeV2PairError::InsufficientLiquidityBurned);
         }
 
         // Burn liquidity tokens
@@ -192,7 +192,7 @@ impl CasperswapV2Pair {
         // Require at least one output amount to be > 0
         if amount0_out.is_zero() && amount1_out.is_zero() {
             self.env()
-                .revert(CasperswapV2PairError::InsufficientOutputAmount);
+                .revert(CasperTradeV2PairError::InsufficientOutputAmount);
         }
 
         // Get reserves
@@ -202,20 +202,20 @@ impl CasperswapV2Pair {
         // Require outputs are less than reserves
         if amount0_out >= reserve0 || amount1_out >= reserve1 {
             self.env()
-                .revert(CasperswapV2PairError::InsufficientLiquidity);
+                .revert(CasperTradeV2PairError::InsufficientLiquidity);
         }
 
         // Get token addresses
         let token0_addr = self
             .token0
-            .get_or_revert_with(CasperswapV2PairError::NotInitialized);
+            .get_or_revert_with(CasperTradeV2PairError::NotInitialized);
         let token1_addr = self
             .token1
-            .get_or_revert_with(CasperswapV2PairError::NotInitialized);
+            .get_or_revert_with(CasperTradeV2PairError::NotInitialized);
 
         // Validate recipient is not one of the token addresses
         if to == token0_addr || to == token1_addr {
-            self.env().revert(CasperswapV2PairError::InvalidTo);
+            self.env().revert(CasperTradeV2PairError::InvalidTo);
         }
 
         // Optimistically transfer tokens
@@ -228,8 +228,8 @@ impl CasperswapV2Pair {
 
         // Call the callback if data is provided
         if let Some(callback_data) = data {
-            let callee = CasperswapCalleeContractRef::new(self.env(), to);
-            callee.casperswap_call(self.env().caller(), amount0_out, amount1_out, callback_data);
+            let callee = CasperTradeCalleeContractRef::new(self.env(), to);
+            callee.casper_trade_call(self.env().caller(), amount0_out, amount1_out, callback_data);
         }
 
         // Get new balances
@@ -256,7 +256,7 @@ impl CasperswapV2Pair {
         // Require at least one input amount > 0
         if amount0_in.is_zero() && amount1_in.is_zero() {
             self.env()
-                .revert(CasperswapV2PairError::InsufficientInputAmount);
+                .revert(CasperTradeV2PairError::InsufficientInputAmount);
         }
 
         // Check K invariant with 0.3% fee
@@ -267,7 +267,7 @@ impl CasperswapV2Pair {
         let k_original = reserve0 * reserve1 * U256::from(1000).pow(U256::from(2));
 
         if k_adjusted < k_original {
-            self.env().revert(CasperswapV2PairError::K);
+            self.env().revert(CasperTradeV2PairError::K);
         }
 
         // Update reserves
@@ -351,16 +351,16 @@ impl CasperswapV2Pair {
 
     pub fn token0(&self) -> Address {
         self.token0
-            .get_or_revert_with(CasperswapV2PairError::NotInitialized)
+            .get_or_revert_with(CasperTradeV2PairError::NotInitialized)
     }
 
     pub fn token1(&self) -> Address {
         self.token1
-            .get_or_revert_with(CasperswapV2PairError::NotInitialized)
+            .get_or_revert_with(CasperTradeV2PairError::NotInitialized)
     }
 }
 
-impl CasperswapV2Pair {
+impl CasperTradeV2Pair {
     // TODO: Verify the soundness of this function
     fn _update(&mut self, balance0: U256, balance1: U256, reserve0: U256, reserve1: U256) {
         // Get current block timestamp
@@ -436,7 +436,7 @@ impl CasperswapV2Pair {
         FactoryContractRef::new(
             self.env(),
             self.factory
-                .get_or_revert_with(CasperswapV2PairError::NotInitialized),
+                .get_or_revert_with(CasperTradeV2PairError::NotInitialized),
         )
     }
 
@@ -444,7 +444,7 @@ impl CasperswapV2Pair {
         Cep18ContractRef::new(
             self.env(),
             self.token0
-                .get_or_revert_with(CasperswapV2PairError::NotInitialized),
+                .get_or_revert_with(CasperTradeV2PairError::NotInitialized),
         )
     }
 
@@ -452,7 +452,7 @@ impl CasperswapV2Pair {
         Cep18ContractRef::new(
             self.env(),
             self.token1
-                .get_or_revert_with(CasperswapV2PairError::NotInitialized),
+                .get_or_revert_with(CasperTradeV2PairError::NotInitialized),
         )
     }
 }
@@ -473,7 +473,7 @@ mod tests {
 
     struct PairEnv {
         pub odra_env: HostEnv,
-        pub pair: CasperswapV2PairHostRef,
+        pub pair: CasperTradeV2PairHostRef,
         pub token0: SampleTokenHostRef,
         pub token1: SampleTokenHostRef,
         pub owner: Address,
@@ -510,9 +510,9 @@ mod tests {
                 initial_supply: expand_to_18_decimals(10000),
             },
         );
-        let mut pair = CasperswapV2Pair::deploy(
+        let mut pair = CasperTradeV2Pair::deploy(
             &env,
-            CasperswapV2PairInitArgs {
+            CasperTradeV2PairInitArgs {
                 factory: factory.address(),
             },
         );
