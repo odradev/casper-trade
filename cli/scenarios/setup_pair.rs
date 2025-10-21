@@ -84,7 +84,7 @@ impl Scenario for SetupPair {
 
         // Register the pair with the factory
         odra_cli::log("\nRegistering pair with factory...");
-        factory.will_return_pair(Some(pair.address()));
+        factory.will_create_pair(token_a_address, token_b_address, pair.address());
 
         odra_cli::log("\n✓ Trading pair setup completed successfully!");
         odra_cli::log("  You can now add liquidity using the 'AddLiquidity' scenario");

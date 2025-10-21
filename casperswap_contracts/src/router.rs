@@ -773,8 +773,9 @@ mod tests {
         );
         wcspr_pair.initialize(wcspr.address(), wcspr_partner.address());
 
-        // Make factory return the pairs
-        factory.will_return_pair(Some(pair.address()));
+        // Set up factory to create pairs
+        factory.will_create_pair(token0.address(), token1.address(), pair.address());
+        factory.will_create_pair(wcspr.address(), wcspr_partner.address(), wcspr_pair.address());
 
         RouterEnv {
             odra_env: env,
@@ -1058,7 +1059,7 @@ mod tests {
         );
         cspr_pair.initialize(env.token0.address(), env.wcspr.address());
 
-        env.factory.will_return_pair(Some(cspr_pair.address()));
+        env.factory.will_create_pair(env.token0.address(), env.wcspr.address(), cspr_pair.address());
 
         let token_amount = expand_to_18_decimals(1);
         let cspr_amount = expand_to_9_decimals(4);
@@ -1226,8 +1227,6 @@ mod tests {
 
         let wcspr_partner_amount = expand_to_18_decimals(1);
         let cspr_amount = expand_to_18_decimals(4);
-
-        env.factory.will_return_pair(Some(env.wcspr_pair.address()));
 
         env.wcspr_partner
             .transfer(&env.wcspr_pair.address(), &wcspr_partner_amount);
@@ -1545,7 +1544,6 @@ mod tests {
         let expected_output_amount = U256::from_dec_str("1662497915624478906").unwrap();
 
         // Setup liquidity for WCSPR-WCSPRPartner pair
-        env.factory.will_return_pair(Some(env.wcspr_pair.address()));
         env.wcspr_partner
             .transfer(&env.wcspr_pair.address(), &wcspr_partner_amount);
         env.wcspr.with_tokens(cspr_amount.to_u512()).deposit();
@@ -1643,7 +1641,6 @@ mod tests {
         let expected_output_amount = U256::from_dec_str("1662497915624478906").unwrap();
 
         // Setup liquidity for WCSPR-WCSPRPartner pair
-        env.factory.will_return_pair(Some(env.wcspr_pair.address()));
         env.wcspr_partner
             .transfer(&env.wcspr_pair.address(), &wcspr_partner_amount);
         env.wcspr.with_tokens(cspr_amount.to_u512()).deposit();
@@ -1675,7 +1672,6 @@ mod tests {
         let output_amount = expand_to_18_decimals(1);
 
         // Setup liquidity for WCSPRPartner-WCSPR pair
-        env.factory.will_return_pair(Some(env.wcspr_pair.address()));
         env.wcspr_partner
             .transfer(&env.wcspr_pair.address(), &wcspr_partner_amount);
         env.wcspr.with_tokens(cspr_amount.to_u512()).deposit();
@@ -1776,7 +1772,6 @@ mod tests {
         let output_amount = expand_to_18_decimals(1);
 
         // Setup liquidity for WCSPRPartner-WCSPR pair
-        env.factory.will_return_pair(Some(env.wcspr_pair.address()));
         env.wcspr_partner
             .transfer(&env.wcspr_pair.address(), &wcspr_partner_amount);
         env.wcspr.with_tokens(cspr_amount.to_u512()).deposit();
@@ -1809,7 +1804,6 @@ mod tests {
         let expected_output_amount = U256::from_dec_str("1662497915624478906").unwrap();
 
         // Setup liquidity for WCSPRPartner-WCSPR pair
-        env.factory.will_return_pair(Some(env.wcspr_pair.address()));
         env.wcspr_partner
             .transfer(&env.wcspr_pair.address(), &wcspr_partner_amount);
         env.wcspr.with_tokens(cspr_amount.to_u512()).deposit();
@@ -1910,7 +1904,6 @@ mod tests {
         let expected_output_amount = U256::from_dec_str("1662497915624478906").unwrap();
 
         // Setup liquidity for WCSPRPartner-WCSPR pair
-        env.factory.will_return_pair(Some(env.wcspr_pair.address()));
         env.wcspr_partner
             .transfer(&env.wcspr_pair.address(), &wcspr_partner_amount);
         env.wcspr.with_tokens(cspr_amount.to_u512()).deposit();
@@ -1943,7 +1936,6 @@ mod tests {
         let output_amount = expand_to_18_decimals(1);
 
         // Setup liquidity for WCSPR-WCSPRPartner pair
-        env.factory.will_return_pair(Some(env.wcspr_pair.address()));
         env.wcspr_partner
             .transfer(&env.wcspr_pair.address(), &wcspr_partner_amount);
         env.wcspr.with_tokens(cspr_amount.to_u512()).deposit();
@@ -2041,7 +2033,6 @@ mod tests {
         let output_amount = expand_to_18_decimals(1);
 
         // Setup liquidity for WCSPR-WCSPRPartner pair
-        env.factory.will_return_pair(Some(env.wcspr_pair.address()));
         env.wcspr_partner
             .transfer(&env.wcspr_pair.address(), &wcspr_partner_amount);
         env.wcspr.with_tokens(cspr_amount.to_u512()).deposit();
