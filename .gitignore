@@ -1,6 +1,5 @@
 *.wasm
 .node-keys/*
 /target
-/resources
 .env
 .idea

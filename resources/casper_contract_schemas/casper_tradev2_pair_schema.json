@@ -1,0 +1,696 @@
+{
+  "casper_contract_schema_version": 1,
+  "toolchain": "rustc 1.85.0-nightly (d117b7f21 2024-12-31)",
+  "authors": [],
+  "repository": null,
+  "homepage": null,
+  "contract_name": "CasperTradeV2Pair",
+  "contract_version": "0.1.0",
+  "types": [
+    {
+      "struct": {
+        "name": "Burn",
+        "description": null,
+        "members": [
+          {
+            "name": "owner",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "amount",
+            "description": null,
+            "ty": "U256"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "Burn",
+        "description": null,
+        "members": [
+          {
+            "name": "sender",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "amount0",
+            "description": null,
+            "ty": "U256"
+          },
+          {
+            "name": "amount1",
+            "description": null,
+            "ty": "U256"
+          },
+          {
+            "name": "to",
+            "description": null,
+            "ty": "Key"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "DecreaseAllowance",
+        "description": null,
+        "members": [
+          {
+            "name": "owner",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "spender",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "allowance",
+            "description": null,
+            "ty": "U256"
+          },
+          {
+            "name": "decr_by",
+            "description": null,
+            "ty": "U256"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "IncreaseAllowance",
+        "description": null,
+        "members": [
+          {
+            "name": "owner",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "spender",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "allowance",
+            "description": null,
+            "ty": "U256"
+          },
+          {
+            "name": "inc_by",
+            "description": null,
+            "ty": "U256"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "Mint",
+        "description": null,
+        "members": [
+          {
+            "name": "recipient",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "amount",
+            "description": null,
+            "ty": "U256"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "Mint",
+        "description": null,
+        "members": [
+          {
+            "name": "sender",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "amount0",
+            "description": null,
+            "ty": "U256"
+          },
+          {
+            "name": "amount1",
+            "description": null,
+            "ty": "U256"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "SetAllowance",
+        "description": null,
+        "members": [
+          {
+            "name": "owner",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "spender",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "allowance",
+            "description": null,
+            "ty": "U256"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "Swap",
+        "description": null,
+        "members": [
+          {
+            "name": "sender",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "amount0_in",
+            "description": null,
+            "ty": "U256"
+          },
+          {
+            "name": "amount1_in",
+            "description": null,
+            "ty": "U256"
+          },
+          {
+            "name": "amount0_out",
+            "description": null,
+            "ty": "U256"
+          },
+          {
+            "name": "amount1_out",
+            "description": null,
+            "ty": "U256"
+          },
+          {
+            "name": "to",
+            "description": null,
+            "ty": "Key"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "Sync",
+        "description": null,
+        "members": [
+          {
+            "name": "reserve0",
+            "description": null,
+            "ty": "U256"
+          },
+          {
+            "name": "reserve1",
+            "description": null,
+            "ty": "U256"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "Transfer",
+        "description": null,
+        "members": [
+          {
+            "name": "sender",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "recipient",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "amount",
+            "description": null,
+            "ty": "U256"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "TransferFrom",
+        "description": null,
+        "members": [
+          {
+            "name": "spender",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "owner",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "recipient",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "amount",
+            "description": null,
+            "ty": "U256"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "name": "CannotTargetSelfUser",
+      "description": "The user cannot target themselves.",
+      "discriminant": 60003
+    },
+    {
+      "name": "InsufficientAllowance",
+      "description": "Spender does not have enough allowance approved.",
+      "discriminant": 60002
+    },
+    {
+      "name": "InsufficientBalance",
+      "description": "Spender does not have enough balance.",
+      "discriminant": 60001
+    }
+  ],
+  "entry_points": [
+    {
+      "name": "initialize",
+      "description": "",
+      "is_mutable": true,
+      "arguments": [
+        {
+          "name": "token0",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        },
+        {
+          "name": "token1",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "mint",
+      "description": "",
+      "is_mutable": true,
+      "arguments": [
+        {
+          "name": "to",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "U256",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "burn",
+      "description": "",
+      "is_mutable": true,
+      "arguments": [
+        {
+          "name": "to",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": {
+        "Tuple2": [
+          "U256",
+          "U256"
+        ]
+      },
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "swap",
+      "description": "",
+      "is_mutable": true,
+      "arguments": [
+        {
+          "name": "amount0_out",
+          "description": null,
+          "ty": "U256",
+          "optional": false
+        },
+        {
+          "name": "amount1_out",
+          "description": null,
+          "ty": "U256",
+          "optional": false
+        },
+        {
+          "name": "to",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        },
+        {
+          "name": "data",
+          "description": null,
+          "ty": {
+            "Option": {
+              "List": "U8"
+            }
+          },
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "get_reserves",
+      "description": "Returns reserves and last block timestamp as a tuple",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": {
+        "Tuple3": [
+          "U256",
+          "U256",
+          "U64"
+        ]
+      },
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "get_reserve0",
+      "description": "",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "U256",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "get_reserve1",
+      "description": "",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "U256",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "get_block_timestamp_last",
+      "description": "",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "U64",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "get_price0_cumulative_last",
+      "description": "",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "U256",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "get_price1_cumulative_last",
+      "description": "",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "U256",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "skim",
+      "description": "Force balances to match reserves by sending excess tokens to recipient",
+      "is_mutable": true,
+      "arguments": [
+        {
+          "name": "to",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "sync",
+      "description": "Force reserves to match balances",
+      "is_mutable": true,
+      "arguments": [],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "token0",
+      "description": "",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "Key",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "token1",
+      "description": "",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "Key",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "total_supply",
+      "description": "Delegated. See `self.token.total_supply()` for details.",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "U256",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "balance_of",
+      "description": "Delegated. See `self.token.balance_of()` for details.",
+      "is_mutable": false,
+      "arguments": [
+        {
+          "name": "address",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "U256",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "transfer",
+      "description": "Delegated. See `self.token.transfer()` for details.",
+      "is_mutable": true,
+      "arguments": [
+        {
+          "name": "recipient",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        },
+        {
+          "name": "amount",
+          "description": null,
+          "ty": "U256",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "transfer_from",
+      "description": "Delegated. See `self.token.transfer_from()` for details.",
+      "is_mutable": true,
+      "arguments": [
+        {
+          "name": "owner",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        },
+        {
+          "name": "recipient",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        },
+        {
+          "name": "amount",
+          "description": null,
+          "ty": "U256",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "approve",
+      "description": "Delegated. See `self.token.approve()` for details.",
+      "is_mutable": true,
+      "arguments": [
+        {
+          "name": "spender",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        },
+        {
+          "name": "amount",
+          "description": null,
+          "ty": "U256",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "allowance",
+      "description": "Delegated. See `self.token.allowance()` for details.",
+      "is_mutable": false,
+      "arguments": [
+        {
+          "name": "owner",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        },
+        {
+          "name": "spender",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "U256",
+      "is_contract_context": true,
+      "access": "public"
+    }
+  ],
+  "events": [
+    {
+      "name": "Burn",
+      "ty": "Burn"
+    },
+    {
+      "name": "DecreaseAllowance",
+      "ty": "DecreaseAllowance"
+    },
+    {
+      "name": "IncreaseAllowance",
+      "ty": "IncreaseAllowance"
+    },
+    {
+      "name": "Mint",
+      "ty": "Mint"
+    },
+    {
+      "name": "SetAllowance",
+      "ty": "SetAllowance"
+    },
+    {
+      "name": "Swap",
+      "ty": "Swap"
+    },
+    {
+      "name": "Sync",
+      "ty": "Sync"
+    },
+    {
+      "name": "Transfer",
+      "ty": "Transfer"
+    },
+    {
+      "name": "TransferFrom",
+      "ty": "TransferFrom"
+    }
+  ],
+  "call": {
+    "wasm_file_name": "CasperTradeV2Pair.wasm",
+    "description": "",
+    "arguments": [
+      {
+        "name": "odra_cfg_package_hash_key_name",
+        "description": "The arg name for the package hash key name.",
+        "ty": "String",
+        "optional": false
+      },
+      {
+        "name": "odra_cfg_allow_key_override",
+        "description": "If true and the key specified in odra_cfg_package_hash_key_name already exists, it will be overwritten.",
+        "ty": "Bool",
+        "optional": false
+      },
+      {
+        "name": "odra_cfg_is_upgradable",
+        "description": "The arg name for the contract upgradeability setting.",
+        "ty": "Bool",
+        "optional": false
+      },
+      {
+        "name": "odra_cfg_is_upgrade",
+        "description": "The arg name for telling the installer that the contract is being upgraded.",
+        "ty": "Bool",
+        "optional": false
+      },
+      {
+        "name": "factory",
+        "description": null,
+        "ty": "Key",
+        "optional": false
+      }
+    ]
+  }
+}

@@ -1,6 +1,8 @@
 #![doc = "Binary for building schema definitions from odra contracts."]
 #[allow(unused_imports)]
 #[cfg(not(target_arch = "wasm32"))]
+use casper_trade_contracts;
+
 extern "Rust" {
     fn module_schema() -> odra::contract_def::ContractBlueprint;
     fn casper_contract_schema() -> odra::schema::casper_contract_schema::ContractSchema;
