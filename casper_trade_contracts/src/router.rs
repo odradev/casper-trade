@@ -33,7 +33,7 @@ impl CasperTradeV2Router {
     }
 
     /// Returns the factory address
-    pub fn factory(&self) -> Address {
+    pub fn factory_address(&self) -> Address {
         self.factory
             .get_or_revert_with(CasperTradeV2RouterError::Misconfigured)
     }
@@ -614,7 +614,7 @@ impl CasperTradeV2Router {
 
 impl CasperTradeV2Router {
     fn factory_instance(&self) -> FactoryContractRef {
-        FactoryContractRef::new(self.env(), self.factory())
+        FactoryContractRef::new(self.env(), self.factory_address())
     }
 
     fn wcspr_instance(&self) -> WrappedNativeTokenContractRef {

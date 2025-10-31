@@ -54,7 +54,7 @@ impl Scenario for SwapTokens {
         env.set_gas(50_000_000_000);
 
         // Get the router contract
-        let mut router = container.contract_ref::<CasperTradeV2Router>(env, None)?;
+        let mut router = container.contract_ref::<CasperTradeV2Router>(env)?;
 
         // Get args
         let token_in_input = args.get_single::<String>("token_in")?;

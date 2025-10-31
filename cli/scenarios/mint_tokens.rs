@@ -40,7 +40,7 @@ impl Scenario for MintTokens {
 
         // Get the token contract
         let mut token =
-            container.contract_ref::<SampleToken>(env, Some("SampleTokenA".to_string()))?;
+            container.contract_ref_named::<SampleToken>(env, Some("SampleTokenA".to_string()))?;
 
         // Get args
         let recipient_str = args.get_single::<String>("recipient")?;

@@ -58,8 +58,8 @@ impl Scenario for SetupPair {
         let token_b = create_token_ref(token_b_address, env);
 
         // Get factory and pair
-        let mut factory = container.contract_ref::<Factory>(env, None)?;
-        let mut pair = container.contract_ref::<CasperTradeV2Pair>(env, None)?;
+        let mut factory = container.contract_ref::<Factory>(env)?;
+        let mut pair = container.contract_ref::<CasperTradeV2Pair>(env)?;
 
         odra_cli::log("Setting up trading pair:");
         odra_cli::log(format!(

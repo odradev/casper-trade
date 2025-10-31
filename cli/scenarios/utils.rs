@@ -30,7 +30,7 @@ pub fn parse_token_input(
         Ok((addr, display_name))
     } else {
         // Try as contract name
-        match container.contract_ref::<SampleToken>(env, Some(input.to_string())) {
+        match container.contract_ref_named::<SampleToken>(env, Some(input.to_string())) {
             Ok(token) => {
                 let addr = token.address();
                 let display_name = format!("{} ({})", token.symbol(), input);

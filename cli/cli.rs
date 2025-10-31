@@ -116,7 +116,7 @@ impl DeployScript for ContractsDeployScript {
         )?;
 
         println!("Router deployed successfully!");
-        println!("  Factory: {:?}", router.factory());
+        println!("  Factory: {:?}", router.factory_address());
         println!("  WCSPR: {:?}", router.wcspr());
 
         // Deploy and initialize trading pairs
