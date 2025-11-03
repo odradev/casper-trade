@@ -5,6 +5,8 @@ use odra::{
 };
 use odra_modules::cep18_token::{Cep18, Cep18ContractRef};
 
+use crate::casper_trade_v2_pair::errors::CasperTradeV2PairError::{Forbidden, Overflow};
+use crate::router::errors::CasperTradeV2RouterError::Misconfigured;
 use crate::{
     casper_trade_callee::CasperTradeCalleeContractRef,
     casper_trade_v2_pair::{
@@ -14,14 +16,17 @@ use crate::{
     factory::FactoryContractRef,
     utils::zero_address,
 };
+
 pub mod errors;
 pub mod events;
 
 pub const MINIMUM_LIQUIDITY: u64 = 1000;
 
 /// CasperTradeV2Pair contract - implementation based on Uniswap V2
-#[odra::module(events = [Mint, Burn, Swap, Sync])]
+#[odra::module(factory=on, events = [Mint, Burn, Swap, Sync])]
 pub struct CasperTradeV2Pair {
+    pub initializer: Var<Address>,
+    pub initializer2: Var<Address>,
     pub token: SubModule<Cep18>,
     pub factory: Var<Address>,
     pub token0: Var<Address>,
@@ -35,7 +40,7 @@ pub struct CasperTradeV2Pair {
 }
 
 /// Module implementation
-#[odra::module]
+#[odra::module(factory=on)]
 impl CasperTradeV2Pair {
     delegate! {
         to self.token {
@@ -62,11 +67,26 @@ impl CasperTradeV2Pair {
         );
     }
 
+    pub fn initializer(&self) -> Address {
+        self.initializer.get().unwrap()
+    }
+
+    pub fn initializer2(&self) -> Address {
+        self.initializer2.get().unwrap()
+    }
+
     pub fn initialize(&mut self, token0: Address, token1: Address) {
-        // TODO: Uncomment this when the factory is implemented
-        // if self.factory.get_or_revert_with(CasperTradeV2PairError::Misconfigured) != self.env().caller() {
-        //     self.env().revert(CasperTradeV2PairError::Forbidden);
-        // }
+        let factory = self
+            .factory
+            .get()
+            .unwrap_or_revert_with(&self.env(), CasperTradeV2PairError::Misconfigured);
+        let caller = self.env().caller();
+        self.initializer.set(factory);
+        self.initializer2.set(caller);
+        if caller != factory {
+            // TODO: Why this doesn't work?
+            // self.env().revert(Overflow);
+        }
         self.token0.set(token0);
         self.token1.set(token1);
     }
@@ -358,9 +378,7 @@ impl CasperTradeV2Pair {
         self.token1
             .get_or_revert_with(CasperTradeV2PairError::NotInitialized)
     }
-}
 
-impl CasperTradeV2Pair {
     // TODO: Verify the soundness of this function
     fn _update(&mut self, balance0: U256, balance1: U256, reserve0: U256, reserve1: U256) {
         // Get current block timestamp
@@ -407,7 +425,7 @@ impl CasperTradeV2Pair {
 
     // if fee is on, mint liquidity equivalent to 1/6th of the growth in sqrt(k)
     fn _mint_fee(&mut self, reserve0: U256, reserve1: U256) -> bool {
-        let fee_to = self.factory().fee_to();
+        let fee_to = self.factory_contract().fee_to();
         let fee_on = fee_to.is_some();
 
         let k_last = self.k_last.get_or_default();
@@ -432,7 +450,7 @@ impl CasperTradeV2Pair {
         fee_on
     }
 
-    fn factory(&self) -> FactoryContractRef {
+    fn factory_contract(&self) -> FactoryContractRef {
         FactoryContractRef::new(
             self.env(),
             self.factory
@@ -459,6 +477,7 @@ impl CasperTradeV2Pair {
 
 #[cfg(test)]
 mod tests {
+
     use crate::{
         factory::{Factory, FactoryInitArgs},
         sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs},
@@ -466,6 +485,7 @@ mod tests {
     };
 
     use super::*;
+    use odra::host::NoArgs;
     use odra::{
         casper_types::U256,
         host::{Deployer, HostEnv},
@@ -486,10 +506,13 @@ mod tests {
         let owner = env.get_account(0);
         let alice = env.get_account(1);
         let bob = env.get_account(2);
+        let pair_factory = CasperTradeV2PairFactory::deploy(&env, NoArgs);
+
         let factory = Factory::deploy(
             &env,
             FactoryInitArgs {
                 fee_to: if fee_on { Some(bob) } else { None },
+                pair_factory: pair_factory.address(),
             },
         );
         let token0 = SampleToken::deploy(

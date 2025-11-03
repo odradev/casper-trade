@@ -2,6 +2,9 @@
 fqn = "casper_trade_contracts::casper_trade_v2_pair::CasperTradeV2Pair"
 
 [[contracts]]
+fqn = "casper_trade_contracts::casper_trade_v2_pair::CasperTradeV2PairFactory"
+
+[[contracts]]
 fqn = "casper_trade_contracts::sample_tokens::SampleToken"
 
 [[contracts]]

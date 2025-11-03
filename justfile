@@ -2,8 +2,10 @@ default:
     just -l
 
 test:
-    cargo odra test
-    cargo odra test -b casper
+    #cargo odra test
+    cargo odra build
+    cp wasm/* casper_trade_contracts/wasm/
+    cargo odra test -b casper -s
 
 clippy:
     cargo clippy --all-targets -- -D warnings

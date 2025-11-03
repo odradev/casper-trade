@@ -670,9 +670,11 @@ impl CasperTradeV2Router {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::casper_trade_v2_pair::CasperTradeV2PairFactory;
     use crate::{
         casper_trade_v2_pair::{
-            CasperTradeV2Pair, CasperTradeV2PairHostRef, CasperTradeV2PairInitArgs, MINIMUM_LIQUIDITY,
+            CasperTradeV2Pair, CasperTradeV2PairHostRef, CasperTradeV2PairInitArgs,
+            MINIMUM_LIQUIDITY,
         },
         factory::{Factory, FactoryHostRef, FactoryInitArgs},
         sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs},
@@ -707,9 +709,16 @@ mod tests {
         let owner = env.get_account(0);
         let alice = env.get_account(1);
         let bob = env.get_account(2);
+        let pair_factory = CasperTradeV2PairFactory::deploy(&env, NoArgs);
 
         // Deploy the actual Factory contract
-        let mut factory = Factory::deploy(&env, FactoryInitArgs { fee_to: None });
+        let mut factory = Factory::deploy(
+            &env,
+            FactoryInitArgs {
+                fee_to: None,
+                pair_factory: pair_factory.address(),
+            },
+        );
 
         // Deploy WCSPR contract
         let wcspr = WrappedNativeToken::deploy(&env, NoArgs);
@@ -755,31 +764,14 @@ mod tests {
             },
         );
 
-        // Deploy pair for token0-token1
-        let mut pair = CasperTradeV2Pair::deploy(
-            &env,
-            CasperTradeV2PairInitArgs {
-                factory: factory.address(),
-            },
-        );
-        pair.initialize(token0.address(), token1.address());
-
-        // Deploy pair for WCSPR-WCSPRPartner
-        let mut wcspr_pair = CasperTradeV2Pair::deploy(
-            &env,
-            CasperTradeV2PairInitArgs {
-                factory: factory.address(),
-            },
-        );
-        wcspr_pair.initialize(wcspr.address(), wcspr_partner.address());
-
-        // Set up factory to create pairs
-        factory.will_create_pair(token0.address(), token1.address(), pair.address());
-        factory.will_create_pair(
-            wcspr.address(),
-            wcspr_partner.address(),
-            wcspr_pair.address(),
-        );
+        // Create pairs via factory
+        let pair_address = factory.create_pair(token0.address(), token1.address());
+        let pair = CasperTradeV2PairHostRef::new(pair_address, env.clone());
+        // assert_eq!(pair.initializer(), factory.address());
+        // assert_eq!(pair.initializer(), pair.address());
+        assert_eq!(pair.initializer(), pair.initializer2());
+        let wcspr_pair_address = factory.create_pair(wcspr.address(), wcspr_partner.address());
+        let wcspr_pair = CasperTradeV2PairHostRef::new(wcspr_pair_address, env.clone());
 
         RouterEnv {
             odra_env: env,
@@ -1055,19 +1047,10 @@ mod tests {
     fn test_add_liquidity_cspr() {
         let mut env = setup_router();
 
-        let mut cspr_pair = CasperTradeV2Pair::deploy(
-            &env.odra_env,
-            CasperTradeV2PairInitArgs {
-                factory: env.factory.address(),
-            },
-        );
-        cspr_pair.initialize(env.token0.address(), env.wcspr.address());
-
-        env.factory.will_create_pair(
-            env.token0.address(),
-            env.wcspr.address(),
-            cspr_pair.address(),
-        );
+        let cspr_pair_address = env
+            .factory
+            .create_pair(env.token0.address(), env.wcspr.address());
+        let mut cspr_pair = CasperTradeV2PairHostRef::new(cspr_pair_address, env.odra_env.clone());
 
         let token_amount = expand_to_18_decimals(1);
         let cspr_amount = expand_to_9_decimals(4);
@@ -1093,15 +1076,16 @@ mod tests {
 
         // Check token TransferFrom event (user to pair)
         use odra_modules::cep18::events::TransferFrom;
-        assert!(env.odra_env.emitted_event(
-            &env.token0,
+        let event: TransferFrom = env.odra_env.get_event(&env.token0, 3).unwrap();
+        assert_eq!(
+            event,
             TransferFrom {
                 spender: env.router.address(),
                 owner: env.owner,
                 recipient: cspr_pair.address(),
                 amount: token_amount,
             }
-        ));
+        );
 
         // Note: WCSPR events would require checking deposit and transfer events
         // The Uniswap test doesn't explicitly check all WETH events in detail

@@ -6,11 +6,11 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-odra = { git = "https://github.com/odradev/odra", branch = "release/2.4.1", features = [], default-features = false }
-odra-test = { git = "https://github.com/odradev/odra", branch = "release/2.4.1", features = [], default-features = false }
-odra-build = { git = "https://github.com/odradev/odra", branch = "release/2.4.1", features = [], default-features = false }
-odra-cli = { git = "https://github.com/odradev/odra", branch = "release/2.4.1", features = [], default-features = false }
-odra-modules = { git = "https://github.com/odradev/odra", branch = "release/2.4.1", features = [], default-features = false }
+odra = { git = "https://github.com/odradev/odra", branch = "fix/factory-module", features = [], default-features = false }
+odra-test = { git = "https://github.com/odradev/odra", branch = "fix/factory-module", features = [], default-features = false }
+odra-build = { git = "https://github.com/odradev/odra", branch = "fix/factory-module", features = [], default-features = false }
+odra-cli = { git = "https://github.com/odradev/odra", branch = "fix/factory-module", features = [], default-features = false }
+odra-modules = { git = "https://github.com/odradev/odra", branch = "fix/factory-module", features = [], default-features = false }
 
 [profile.release]
 codegen-units = 1
