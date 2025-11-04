@@ -10,7 +10,7 @@
   "errors": [],
   "entry_points": [
     {
-      "name": "factory",
+      "name": "factory_address",
       "description": "Returns the factory address",
       "is_mutable": false,
       "arguments": [],

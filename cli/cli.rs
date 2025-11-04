@@ -28,7 +28,7 @@ impl DeployScript for ContractsDeployScript {
         env: &HostEnv,
         container: &mut DeployedContractsContainer,
     ) -> Result<(), odra_cli::deploy::Error> {
-        env.set_gas(50_000_000_000);
+        env.set_gas(1000_000_000_000);
 
         let pair_factory = CasperTradeV2PairFactory::deploy(env, NoArgs);
 
@@ -42,7 +42,7 @@ impl DeployScript for ContractsDeployScript {
             },
             InstallConfig::upgradable::<Factory>(),
             container,
-            cspr!(400),
+            cspr!(1000),
         )?;
 
         println!("Factory deployed successfully!");

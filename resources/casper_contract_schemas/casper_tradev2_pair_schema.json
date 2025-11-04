@@ -300,6 +300,24 @@
   ],
   "entry_points": [
     {
+      "name": "initializer",
+      "description": "",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "Key",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "initializer2",
+      "description": "",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "Key",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
       "name": "initialize",
       "description": "",
       "is_mutable": true,

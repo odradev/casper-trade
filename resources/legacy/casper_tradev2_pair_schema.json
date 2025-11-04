@@ -334,6 +334,22 @@
       "attributes": []
     },
     {
+      "name": "initializer",
+      "args": [],
+      "is_mutable": false,
+      "return_ty": "Key",
+      "ty": "Public",
+      "attributes": []
+    },
+    {
+      "name": "initializer2",
+      "args": [],
+      "is_mutable": false,
+      "return_ty": "Key",
+      "ty": "Public",
+      "attributes": []
+    },
+    {
       "name": "initialize",
       "args": [
         {

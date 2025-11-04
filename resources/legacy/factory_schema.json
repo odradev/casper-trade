@@ -13,6 +13,13 @@
           "is_ref": false,
           "is_slice": false,
           "is_required": true
+        },
+        {
+          "name": "pair_factory",
+          "ty": "Key",
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
         }
       ],
       "is_mutable": true,
@@ -38,36 +45,6 @@
           "ty": {
             "Option": "Key"
           },
-          "is_ref": false,
-          "is_slice": false,
-          "is_required": true
-        }
-      ],
-      "is_mutable": true,
-      "return_ty": "Unit",
-      "ty": "Public",
-      "attributes": []
-    },
-    {
-      "name": "will_create_pair",
-      "args": [
-        {
-          "name": "token_a",
-          "ty": "Key",
-          "is_ref": false,
-          "is_slice": false,
-          "is_required": true
-        },
-        {
-          "name": "token_b",
-          "ty": "Key",
-          "is_ref": false,
-          "is_slice": false,
-          "is_required": true
-        },
-        {
-          "name": "pair",
-          "ty": "Key",
           "is_ref": false,
           "is_slice": false,
           "is_required": true

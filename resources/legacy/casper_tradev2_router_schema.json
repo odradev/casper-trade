@@ -26,7 +26,7 @@
       "attributes": []
     },
     {
-      "name": "factory",
+      "name": "factory_address",
       "args": [],
       "is_mutable": false,
       "return_ty": "Key",

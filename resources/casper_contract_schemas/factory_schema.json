@@ -39,36 +39,8 @@
       "access": "public"
     },
     {
-      "name": "will_create_pair",
-      "description": "Sets up a mock pair mapping for testing.",
-      "is_mutable": true,
-      "arguments": [
-        {
-          "name": "token_a",
-          "description": null,
-          "ty": "Key",
-          "optional": false
-        },
-        {
-          "name": "token_b",
-          "description": null,
-          "ty": "Key",
-          "optional": false
-        },
-        {
-          "name": "pair",
-          "description": null,
-          "ty": "Key",
-          "optional": false
-        }
-      ],
-      "return_ty": "Unit",
-      "is_contract_context": true,
-      "access": "public"
-    },
-    {
       "name": "create_pair",
-      "description": "Creates a pair for the given tokens.",
+      "description": "Creates a pair for the given tokens.ists, it will return existing one.",
       "is_mutable": true,
       "arguments": [
         {
@@ -148,6 +120,12 @@
         "ty": {
           "Option": "Key"
         },
+        "optional": false
+      },
+      {
+        "name": "pair_factory",
+        "description": null,
+        "ty": "Key",
         "optional": false
       }
     ]
