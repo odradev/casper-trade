@@ -5,8 +5,6 @@ use odra::{
 };
 use odra_modules::cep18_token::{Cep18, Cep18ContractRef};
 
-use crate::casper_trade_v2_pair::errors::CasperTradeV2PairError::{Forbidden, Overflow};
-use crate::router::errors::CasperTradeV2RouterError::Misconfigured;
 use crate::{
     casper_trade_callee::CasperTradeCalleeContractRef,
     casper_trade_v2_pair::{
@@ -93,7 +91,6 @@ impl CasperTradeV2Pair {
 
     #[odra(non_reentrant)]
     pub fn mint(&mut self, to: Address) -> U256 {
-        // TODO: below should be zero address or some kind of locking mechanism
         let zero_address = zero_address();
         let balance0 = self
             .token0_instance()
@@ -379,7 +376,7 @@ impl CasperTradeV2Pair {
             .get_or_revert_with(CasperTradeV2PairError::NotInitialized)
     }
 
-    // TODO: Verify the soundness of this function
+    // Take a closer look during code review to confirm the soundness of this function
     fn _update(&mut self, balance0: U256, balance1: U256, reserve0: U256, reserve1: U256) {
         // Get current block timestamp
         let block_timestamp = self.env().get_block_time();
@@ -477,7 +474,6 @@ impl CasperTradeV2Pair {
 
 #[cfg(test)]
 mod tests {
-
     use crate::{
         factory::{Factory, FactoryInitArgs},
         sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs},

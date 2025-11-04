@@ -659,10 +659,8 @@ impl CasperTradeV2Router {
     /// Calculates the pair address for a pair
     fn pair_for(&self, token_a: Address, token_b: Address) -> Address {
         // In Uniswap V2, the pair address is calculated, but in Casper we get the address during the deployment
-        // So we get the pair address from the factory, but we sort the tokens to avoid duplicate pairs
-        let (token0, token1) = self.sort_tokens(token_a, token_b);
         self.factory_instance()
-            .get_pair(token0, token1)
+            .get_pair(token_a, token_b)
             .unwrap_or_revert_with(&self.env(), errors::CasperTradeV2RouterError::PairNotFound)
     }
 }
@@ -672,10 +670,7 @@ mod tests {
     use super::*;
     use crate::casper_trade_v2_pair::CasperTradeV2PairFactory;
     use crate::{
-        casper_trade_v2_pair::{
-            CasperTradeV2Pair, CasperTradeV2PairHostRef, CasperTradeV2PairInitArgs,
-            MINIMUM_LIQUIDITY,
-        },
+        casper_trade_v2_pair::{CasperTradeV2PairHostRef, MINIMUM_LIQUIDITY},
         factory::{Factory, FactoryHostRef, FactoryInitArgs},
         sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs},
         utils::{expand_to_18_decimals, expand_to_9_decimals},
@@ -767,9 +762,6 @@ mod tests {
         // Create pairs via factory
         let pair_address = factory.create_pair(token0.address(), token1.address());
         let pair = CasperTradeV2PairHostRef::new(pair_address, env.clone());
-        // assert_eq!(pair.initializer(), factory.address());
-        // assert_eq!(pair.initializer(), pair.address());
-        assert_eq!(pair.initializer(), pair.initializer2());
         let wcspr_pair_address = factory.create_pair(wcspr.address(), wcspr_partner.address());
         let wcspr_pair = CasperTradeV2PairHostRef::new(wcspr_pair_address, env.clone());
 
@@ -1050,7 +1042,7 @@ mod tests {
         let cspr_pair_address = env
             .factory
             .create_pair(env.token0.address(), env.wcspr.address());
-        let mut cspr_pair = CasperTradeV2PairHostRef::new(cspr_pair_address, env.odra_env.clone());
+        let cspr_pair = CasperTradeV2PairHostRef::new(cspr_pair_address, env.odra_env.clone());
 
         let token_amount = expand_to_18_decimals(1);
         let cspr_amount = expand_to_9_decimals(4);

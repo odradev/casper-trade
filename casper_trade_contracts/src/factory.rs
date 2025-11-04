@@ -1,5 +1,5 @@
 use crate::casper_trade_v2_pair::{
-    CasperTradeV2Pair, CasperTradeV2PairContractRef, CasperTradeV2PairFactoryContractRef,
+    CasperTradeV2PairContractRef, CasperTradeV2PairFactoryContractRef,
 };
 use crate::router::errors::CasperTradeV2RouterError::Misconfigured;
 use odra::prelude::*;

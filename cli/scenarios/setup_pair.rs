@@ -1,8 +1,6 @@
 use super::utils::{create_token_ref, parse_token_input};
-use casper_trade_contracts::casper_trade_v2_pair::CasperTradeV2Pair;
 use casper_trade_contracts::factory::Factory;
 use odra::host::HostEnv;
-use odra::prelude::Addressable;
 use odra::schema::casper_contract_schema::NamedCLType;
 use odra_cli::{
     scenario::{Args, Error, Scenario, ScenarioMetadata},
@@ -59,7 +57,6 @@ impl Scenario for SetupPair {
 
         // Get factory and pair
         let mut factory = container.contract_ref::<Factory>(env)?;
-        let mut pair = container.contract_ref::<CasperTradeV2Pair>(env)?;
 
         odra_cli::log("Setting up trading pair:");
         odra_cli::log(format!(
@@ -74,16 +71,14 @@ impl Scenario for SetupPair {
         ));
         odra_cli::log(format!("  Token A Address: {:?}", token_a_address));
         odra_cli::log(format!("  Token B Address: {:?}", token_b_address));
-        odra_cli::log(format!("  Pair Address: {:?}", pair.address()));
 
         // Initialize the pair with the token addresses
-        odra_cli::log("\nInitializing pair with token addresses...");
-        pair.initialize(token_a_address, token_b_address);
+        odra_cli::log("\nCreating pair with token addresses...");
 
-        odra_cli::log(format!("  Token0: {:?}", pair.token0()));
-        odra_cli::log(format!("  Token1: {:?}", pair.token1()));
+        let pair = factory.create_pair(token_a_address, token_b_address);
 
         odra_cli::log("\n✓ Trading pair setup completed successfully!");
+        odra_cli::log(format!("\nPair address: {:?}", pair));
         odra_cli::log("  You can now add liquidity using the 'AddLiquidity' scenario");
 
         Ok(())

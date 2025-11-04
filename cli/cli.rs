@@ -3,14 +3,13 @@
 //! This CLI provides deployment and interaction capabilities for the Casper Trade DEX contracts.
 
 use casper_trade_contracts::casper_trade_v2_pair::{
-    CasperTradeV2Pair, CasperTradeV2PairFactory, CasperTradeV2PairFactoryHostRef,
-    CasperTradeV2PairInitArgs,
+    CasperTradeV2Pair, CasperTradeV2PairFactory, CasperTradeV2PairHostRef,
 };
 use casper_trade_contracts::factory::{Factory, FactoryInitArgs};
 use casper_trade_contracts::router::{CasperTradeV2Router, CasperTradeV2RouterInitArgs};
 use casper_trade_contracts::sample_tokens::{SampleToken, SampleTokenInitArgs};
 use odra::casper_types::U256;
-use odra::host::{Deployer, HostEnv, InstallConfig, NoArgs};
+use odra::host::{Deployer, HostEnv, HostRef, InstallConfig, NoArgs};
 use odra::prelude::Addressable;
 use odra_cli::{cspr, deploy::DeployScript, DeployedContractsContainer, DeployerExt, OdraCli};
 use odra_modules::wrapped_native::WrappedNativeToken;
@@ -31,7 +30,7 @@ impl DeployScript for ContractsDeployScript {
     ) -> Result<(), odra_cli::deploy::Error> {
         env.set_gas(50_000_000_000);
 
-        let pair_factory = CasperTradeV2PairFactory::deploy(&env, NoArgs);
+        let pair_factory = CasperTradeV2PairFactory::deploy(env, NoArgs);
 
         // Deploy Factory contract
         let mut factory = Factory::load_or_deploy_with_cfg(
@@ -125,62 +124,38 @@ impl DeployScript for ContractsDeployScript {
         println!("  Factory: {:?}", router.factory_address());
         println!("  WCSPR: {:?}", router.wcspr());
 
-        // Deploy and initialize trading pairs
-        println!("\nDeploying trading pairs...");
+        // Create and initialize trading pairs
+        println!("\nCreating trading pairs...");
 
-        // Deploy TokenA-TokenB pair
-        let mut pair_a_b = CasperTradeV2Pair::load_or_deploy_with_cfg(
-            env,
-            Some("TokenA_TokenB".to_string()),
-            CasperTradeV2PairInitArgs {
-                factory: factory.address(),
-            },
-            InstallConfig::upgradable::<CasperTradeV2Pair>(),
-            container,
-            cspr!(500),
-        )?;
-        pair_a_b.initialize(token_a.address(), token_b.address());
-        println!("  ✓ TokenA-TokenB pair deployed and initialized");
+        // Creating TokenA-TokenB pair
+        let pair_a_b = factory.create_pair(token_a.address(), token_b.address());
+        let pair_a_b_contract = CasperTradeV2PairHostRef::new(pair_a_b, env.clone());
+        container.add_contract_named(&pair_a_b_contract, Some("TokenA_TokenB".to_string()))?;
+        println!("  ✓ TokenA-TokenB pair created and initialized");
 
-        // Deploy TokenA-WCSPR pair
-        let mut pair_a_wcspr = CasperTradeV2Pair::load_or_deploy_with_cfg(
-            env,
-            Some("TokenA_WCSPR".to_string()),
-            CasperTradeV2PairInitArgs {
-                factory: factory.address(),
-            },
-            InstallConfig::upgradable::<CasperTradeV2Pair>(),
-            container,
-            cspr!(500),
-        )?;
-        pair_a_wcspr.initialize(token_a.address(), wcspr.address());
-        println!("  ✓ TokenA-WCSPR pair deployed and initialized");
+        // Create TokenA-WCSPR pair
+        let pair_a_wcspr = factory.create_pair(token_a.address(), wcspr.address());
+        let pair_a_wcspr_contract = CasperTradeV2PairHostRef::new(pair_a_wcspr, env.clone());
+        println!("  ✓ TokenA-WCSPR pair created and initialized");
+        container.add_contract_named(&pair_a_wcspr_contract, Some("TokenA_WCSPR".to_string()))?;
 
-        // Deploy TokenB-WCSPR pair
-        let mut pair_b_wcspr = CasperTradeV2Pair::load_or_deploy_with_cfg(
-            env,
-            Some("TokenB_WCSPR".to_string()),
-            CasperTradeV2PairInitArgs {
-                factory: factory.address(),
-            },
-            InstallConfig::upgradable::<CasperTradeV2Pair>(),
-            container,
-            cspr!(500),
-        )?;
-        pair_b_wcspr.initialize(token_b.address(), wcspr.address());
-        println!("  ✓ TokenB-WCSPR pair deployed and initialized");
+        // Create TokenB-WCSPR pair
+        let pair_b_wcspr = factory.create_pair(token_b.address(), wcspr.address());
+        let pair_b_wcspr_contract = CasperTradeV2PairHostRef::new(pair_b_wcspr, env.clone());
+        println!("  ✓ TokenB-WCSPR pair created and initialized");
+        container.add_contract_named(&pair_b_wcspr_contract, Some("TokenB_WCSPR".to_string()))?;
 
         println!("\n✓ Deployment completed successfully!");
         println!("\nDeployed contracts:");
-        println!("  - Factory");
-        println!("  - SampleTokenA (TKNA)");
-        println!("  - SampleTokenB (TKNB)");
-        println!("  - WrappedNativeToken (WCSPR)");
-        println!("  - Router");
+        println!("  - Factory - {:?}", factory.address());
+        println!("  - SampleTokenA (TKNA) - {:?}", token_b.address());
+        println!("  - SampleTokenB (TKNB) - {:?}", token_b.address());
+        println!("  - WrappedNativeToken (WCSPR) - {:?}", wcspr.address());
+        println!("  - Router - {:?}", router.factory_address());
         println!("\nTrading pairs:");
-        println!("  - TokenA_TokenB");
-        println!("  - TokenA_WCSPR");
-        println!("  - TokenB_WCSPR");
+        println!("  - TokenA_TokenB - {:?}", pair_a_b.address());
+        println!("  - TokenA_WCSPR - {:?}", pair_a_wcspr.address());
+        println!("  - TokenB_WCSPR - {:?}", pair_b_wcspr.address());
         println!("\nNext steps:");
         println!("  1. Use 'mint-tokens' to mint tokens to accounts");
         println!("  2. Use 'add-liquidity' to add liquidity to pairs");
