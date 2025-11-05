@@ -1,6 +1,33 @@
 {
   "name": "Factory",
-  "events": [],
+  "events": [
+    {
+      "name": "PairCreated",
+      "args": [
+        {
+          "name": "token0",
+          "ty": "Key",
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        },
+        {
+          "name": "token1",
+          "ty": "Key",
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        },
+        {
+          "name": "pair",
+          "ty": "Key",
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        }
+      ]
+    }
+  ],
   "entrypoints": [
     {
       "name": "init",

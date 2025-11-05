@@ -288,6 +288,11 @@
       "discriminant": 60003
     },
     {
+      "name": "Forbidden",
+      "description": "The caller is not allowed to perform this action.",
+      "discriminant": 20002
+    },
+    {
       "name": "InsufficientAllowance",
       "description": "Spender does not have enough allowance approved.",
       "discriminant": 60002
@@ -296,6 +301,56 @@
       "name": "InsufficientBalance",
       "description": "Spender does not have enough balance.",
       "discriminant": 60001
+    },
+    {
+      "name": "InsufficientInputAmount",
+      "description": "Insufficient input amount.",
+      "discriminant": 20009
+    },
+    {
+      "name": "InsufficientLiquidity",
+      "description": "Insufficient liquidity.",
+      "discriminant": 20007
+    },
+    {
+      "name": "InsufficientLiquidityBurned",
+      "description": "Insufficient liquidity burned.",
+      "discriminant": 20011
+    },
+    {
+      "name": "InsufficientLiquidityMinted",
+      "description": "Insufficient liquidity minted.",
+      "discriminant": 20004
+    },
+    {
+      "name": "InsufficientOutputAmount",
+      "description": "Insufficient output amount.",
+      "discriminant": 20006
+    },
+    {
+      "name": "InvalidTo",
+      "description": "Invalid recipient address.",
+      "discriminant": 20008
+    },
+    {
+      "name": "K",
+      "description": "K invariant check failed.",
+      "discriminant": 20010
+    },
+    {
+      "name": "Misconfigured",
+      "description": "The pair is not properly configured.",
+      "discriminant": 20001
+    },
+    {
+      "name": "NotInitialized",
+      "description": "The pair is not properly initialized.",
+      "discriminant": 20003
+    },
+    {
+      "name": "Overflow",
+      "description": "Arithmetic overflow occurred.",
+      "discriminant": 20005
     }
   ],
   "entry_points": [

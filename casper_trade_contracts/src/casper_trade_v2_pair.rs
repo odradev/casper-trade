@@ -21,7 +21,7 @@ pub mod events;
 pub const MINIMUM_LIQUIDITY: u64 = 1000;
 
 /// CasperTradeV2Pair contract - implementation based on Uniswap V2
-#[odra::module(factory=on, events = [Mint, Burn, Swap, Sync])]
+#[odra::module(factory=on, events = [Mint, Burn, Swap, Sync], errors = CasperTradeV2PairError)]
 pub struct CasperTradeV2Pair {
     pub initializer: Var<Address>,
     pub initializer2: Var<Address>,

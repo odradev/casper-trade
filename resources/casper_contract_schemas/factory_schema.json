@@ -6,8 +6,43 @@
   "homepage": null,
   "contract_name": "Factory",
   "contract_version": "0.1.0",
-  "types": [],
-  "errors": [],
+  "types": [
+    {
+      "struct": {
+        "name": "PairCreated",
+        "description": null,
+        "members": [
+          {
+            "name": "token0",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "token1",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "pair",
+            "description": null,
+            "ty": "Key"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "name": "CreatingAPairWithoutMockingIt",
+      "description": "",
+      "discriminant": 1
+    },
+    {
+      "name": "Misconfigured",
+      "description": "",
+      "discriminant": 2
+    }
+  ],
   "entry_points": [
     {
       "name": "fee_to",
@@ -85,7 +120,12 @@
       "access": "public"
     }
   ],
-  "events": [],
+  "events": [
+    {
+      "name": "PairCreated",
+      "ty": "PairCreated"
+    }
+  ],
   "call": {
     "wasm_file_name": "Factory.wasm",
     "description": "Initializes the factory with the given fee to address.",

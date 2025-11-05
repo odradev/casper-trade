@@ -1,11 +1,18 @@
 use crate::casper_trade_v2_pair::{
     CasperTradeV2PairContractRef, CasperTradeV2PairFactoryContractRef,
 };
-use crate::router::errors::CasperTradeV2RouterError::Misconfigured;
+use crate::factory::errors::FactoryError;
 use odra::prelude::*;
 use odra::ContractRef;
 
-#[odra::module]
+#[odra::event]
+pub struct PairCreated {
+    pub token0: Address,
+    pub token1: Address,
+    pub pair: Address,
+}
+
+#[odra::module(events = [PairCreated], errors = FactoryError)]
 pub struct Factory {
     fee_to: Var<Option<Address>>,
     pairs: Mapping<(Address, Address), Address>,
@@ -38,14 +45,21 @@ impl Factory {
             None => {
                 let mut contract_factory = CasperTradeV2PairFactoryContractRef::new(
                     self.env(),
-                    self.pair_factory.get_or_revert_with(Misconfigured),
+                    self.pair_factory
+                        .get_or_revert_with(FactoryError::Misconfigured),
                 );
-                let pair =
-                    contract_factory.factory("LatestPair".to_string(), self.env().self_address());
-                let mut pair_instance = CasperTradeV2PairContractRef::new(self.env(), pair.0);
+                let pair = contract_factory
+                    .factory("LatestPair".to_string(), self.env().self_address())
+                    .0;
+                let mut pair_instance = CasperTradeV2PairContractRef::new(self.env(), pair);
                 pair_instance.initialize(token0, token1);
-                self.pairs.set(&(token0, token1), pair.0);
-                pair.0
+                self.pairs.set(&(token0, token1), pair);
+                self.env().emit_event(PairCreated {
+                    token0,
+                    token1,
+                    pair,
+                });
+                pair
             }
             Some(pair) => pair,
         }
@@ -73,5 +87,6 @@ pub mod errors {
     #[odra::odra_error]
     pub enum FactoryError {
         CreatingAPairWithoutMockingIt = 1,
+        Misconfigured = 2,
     }
 }
