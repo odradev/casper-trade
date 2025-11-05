@@ -1,9 +1,7 @@
-use crate::casper_trade_v2_pair::{
-    CasperTradeV2PairContractRef, CasperTradeV2PairFactoryContractRef,
-};
 use crate::factory::errors::FactoryError;
 use odra::prelude::*;
 use odra::ContractRef;
+use crate::pair::{PairContractRef, PairFactoryContractRef};
 
 #[odra::event]
 pub struct PairCreated {
@@ -37,21 +35,23 @@ impl Factory {
         self.fee_to.set(fee_to);
     }
 
-    /// Creates a pair for the given tokens.ists, it will return existing one.
-    /// In the mock implementation, this looks up the pre-configured pair and stores it.
+    /// Creates a pair for the given tokens. If it exists, it will return existing one.
     pub fn create_pair(&mut self, token_a: Address, token_b: Address) -> Address {
         let (token0, token1) = self.sort_tokens(token_a, token_b);
         match self.pairs.get(&(token0, token1)) {
             None => {
-                let mut contract_factory = CasperTradeV2PairFactoryContractRef::new(
+                let mut contract_factory = PairFactoryContractRef::new(
                     self.env(),
                     self.pair_factory
                         .get_or_revert_with(FactoryError::Misconfigured),
                 );
                 let pair = contract_factory
-                    .factory("LatestPair".to_string(), self.env().self_address())
+                    .factory(
+                        token_a.to_string() + &token_b.to_string(),
+                        self.env().self_address(),
+                    )
                     .0;
-                let mut pair_instance = CasperTradeV2PairContractRef::new(self.env(), pair);
+                let mut pair_instance = PairContractRef::new(self.env(), pair);
                 pair_instance.initialize(token0, token1);
                 self.pairs.set(&(token0, token1), pair);
                 self.env().emit_event(PairCreated {

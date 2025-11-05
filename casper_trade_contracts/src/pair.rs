@@ -6,9 +6,9 @@ use odra::{
 use odra_modules::cep18_token::{Cep18, Cep18ContractRef};
 
 use crate::{
-    casper_trade_callee::CasperTradeCalleeContractRef,
-    casper_trade_v2_pair::{
-        errors::CasperTradeV2PairError,
+    callee::CasperTradeCalleeContractRef,
+    pair::{
+        errors::PairError,
         events::{Burn, Mint, Swap, Sync},
     },
     factory::FactoryContractRef,
@@ -20,11 +20,9 @@ pub mod events;
 
 pub const MINIMUM_LIQUIDITY: u64 = 1000;
 
-/// CasperTradeV2Pair contract - implementation based on Uniswap V2
-#[odra::module(factory=on, events = [Mint, Burn, Swap, Sync], errors = CasperTradeV2PairError)]
-pub struct CasperTradeV2Pair {
-    pub initializer: Var<Address>,
-    pub initializer2: Var<Address>,
+/// Pair contract - implementation based on Uniswap V2
+#[odra::module(factory=on, events = [Mint, Burn, Swap, Sync], errors = PairError)]
+pub struct Pair {
     pub token: SubModule<Cep18>,
     pub factory: Var<Address>,
     pub token0: Var<Address>,
@@ -39,7 +37,7 @@ pub struct CasperTradeV2Pair {
 
 /// Module implementation
 #[odra::module(factory=on)]
-impl CasperTradeV2Pair {
+impl Pair {
     delegate! {
         to self.token {
             fn total_supply(&self) -> U256;
@@ -65,25 +63,14 @@ impl CasperTradeV2Pair {
         );
     }
 
-    pub fn initializer(&self) -> Address {
-        self.initializer.get().unwrap()
-    }
-
-    pub fn initializer2(&self) -> Address {
-        self.initializer2.get().unwrap()
-    }
-
     pub fn initialize(&mut self, token0: Address, token1: Address) {
         let factory = self
             .factory
             .get()
-            .unwrap_or_revert_with(&self.env(), CasperTradeV2PairError::Misconfigured);
+            .unwrap_or_revert_with(&self.env(), PairError::Misconfigured);
         let caller = self.env().caller();
-        self.initializer.set(factory);
-        self.initializer2.set(caller);
-        if caller != factory {
-            // TODO: Why this doesn't work?
-            // self.env().revert(Overflow);
+        if factory != caller {
+            self.env().revert(PairError::Overflow);
         }
         self.token0.set(token0);
         self.token1.set(token1);
@@ -108,7 +95,7 @@ impl CasperTradeV2Pair {
         let total_supply = self.total_supply();
         let minimum_liquidity = U256::from(MINIMUM_LIQUIDITY);
         let liquidity = if total_supply.is_zero() {
-            // permanently lock the first MINIMUM_LIQUIDITY tokensp
+            // permanently lock the first MINIMUM_LIQUIDITY tokens
             self.token.raw_mint(&zero_address, &minimum_liquidity);
             (amount0 * amount1).integer_sqrt() - minimum_liquidity
         } else {
@@ -117,7 +104,7 @@ impl CasperTradeV2Pair {
 
         if liquidity.is_zero() {
             self.env()
-                .revert(CasperTradeV2PairError::InsufficientLiquidityMinted);
+                .revert(PairError::InsufficientLiquidityMinted);
         }
 
         self.token.raw_mint(&to, &liquidity);
@@ -165,7 +152,7 @@ impl CasperTradeV2Pair {
         // Require both amounts > 0
         if amount0.is_zero() || amount1.is_zero() {
             self.env()
-                .revert(CasperTradeV2PairError::InsufficientLiquidityBurned);
+                .revert(PairError::InsufficientLiquidityBurned);
         }
 
         // Burn liquidity tokens
@@ -209,7 +196,7 @@ impl CasperTradeV2Pair {
         // Require at least one output amount to be > 0
         if amount0_out.is_zero() && amount1_out.is_zero() {
             self.env()
-                .revert(CasperTradeV2PairError::InsufficientOutputAmount);
+                .revert(PairError::InsufficientOutputAmount);
         }
 
         // Get reserves
@@ -219,20 +206,20 @@ impl CasperTradeV2Pair {
         // Require outputs are less than reserves
         if amount0_out >= reserve0 || amount1_out >= reserve1 {
             self.env()
-                .revert(CasperTradeV2PairError::InsufficientLiquidity);
+                .revert(PairError::InsufficientLiquidity);
         }
 
         // Get token addresses
         let token0_addr = self
             .token0
-            .get_or_revert_with(CasperTradeV2PairError::NotInitialized);
+            .get_or_revert_with(PairError::NotInitialized);
         let token1_addr = self
             .token1
-            .get_or_revert_with(CasperTradeV2PairError::NotInitialized);
+            .get_or_revert_with(PairError::NotInitialized);
 
         // Validate recipient is not one of the token addresses
         if to == token0_addr || to == token1_addr {
-            self.env().revert(CasperTradeV2PairError::InvalidTo);
+            self.env().revert(PairError::InvalidTo);
         }
 
         // Optimistically transfer tokens
@@ -273,7 +260,7 @@ impl CasperTradeV2Pair {
         // Require at least one input amount > 0
         if amount0_in.is_zero() && amount1_in.is_zero() {
             self.env()
-                .revert(CasperTradeV2PairError::InsufficientInputAmount);
+                .revert(PairError::InsufficientInputAmount);
         }
 
         // Check K invariant with 0.3% fee
@@ -284,7 +271,7 @@ impl CasperTradeV2Pair {
         let k_original = reserve0 * reserve1 * U256::from(1000).pow(U256::from(2));
 
         if k_adjusted < k_original {
-            self.env().revert(CasperTradeV2PairError::K);
+            self.env().revert(PairError::K);
         }
 
         // Update reserves
@@ -368,12 +355,12 @@ impl CasperTradeV2Pair {
 
     pub fn token0(&self) -> Address {
         self.token0
-            .get_or_revert_with(CasperTradeV2PairError::NotInitialized)
+            .get_or_revert_with(PairError::NotInitialized)
     }
 
     pub fn token1(&self) -> Address {
         self.token1
-            .get_or_revert_with(CasperTradeV2PairError::NotInitialized)
+            .get_or_revert_with(PairError::NotInitialized)
     }
 
     // Take a closer look during code review to confirm the soundness of this function
@@ -451,7 +438,7 @@ impl CasperTradeV2Pair {
         FactoryContractRef::new(
             self.env(),
             self.factory
-                .get_or_revert_with(CasperTradeV2PairError::NotInitialized),
+                .get_or_revert_with(PairError::NotInitialized),
         )
     }
 
@@ -459,7 +446,7 @@ impl CasperTradeV2Pair {
         Cep18ContractRef::new(
             self.env(),
             self.token0
-                .get_or_revert_with(CasperTradeV2PairError::NotInitialized),
+                .get_or_revert_with(PairError::NotInitialized),
         )
     }
 
@@ -467,7 +454,7 @@ impl CasperTradeV2Pair {
         Cep18ContractRef::new(
             self.env(),
             self.token1
-                .get_or_revert_with(CasperTradeV2PairError::NotInitialized),
+                .get_or_revert_with(PairError::NotInitialized),
         )
     }
 }
@@ -481,7 +468,7 @@ mod tests {
     };
 
     use super::*;
-    use odra::host::NoArgs;
+    use odra::host::{HostRef, NoArgs};
     use odra::{
         casper_types::U256,
         host::{Deployer, HostEnv},
@@ -489,7 +476,7 @@ mod tests {
 
     struct PairEnv {
         pub odra_env: HostEnv,
-        pub pair: CasperTradeV2PairHostRef,
+        pub pair: PairHostRef,
         pub token0: SampleTokenHostRef,
         pub token1: SampleTokenHostRef,
         pub owner: Address,
@@ -502,9 +489,9 @@ mod tests {
         let owner = env.get_account(0);
         let alice = env.get_account(1);
         let bob = env.get_account(2);
-        let pair_factory = CasperTradeV2PairFactory::deploy(&env, NoArgs);
+        let pair_factory = PairFactory::deploy(&env, NoArgs);
 
-        let factory = Factory::deploy(
+        let mut factory = Factory::deploy(
             &env,
             FactoryInitArgs {
                 fee_to: if fee_on { Some(bob) } else { None },
@@ -529,13 +516,9 @@ mod tests {
                 initial_supply: expand_to_18_decimals(10000),
             },
         );
-        let mut pair = CasperTradeV2Pair::deploy(
-            &env,
-            CasperTradeV2PairInitArgs {
-                factory: factory.address(),
-            },
-        );
-        pair.initialize(token0.address(), token1.address());
+        let pair_address = factory.create_pair(token0.address(), token1.address());
+        let pair = PairHostRef::new(pair_address, env.clone());
+
         PairEnv {
             odra_env: env,
             pair,

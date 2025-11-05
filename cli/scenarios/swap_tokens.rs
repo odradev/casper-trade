@@ -1,5 +1,5 @@
 use super::utils::{create_token_ref, parse_token_input};
-use casper_trade_contracts::router::CasperTradeV2Router;
+use casper_trade_contracts::router::Router;
 use odra::casper_types::U256;
 use odra::host::HostEnv;
 use odra::prelude::Addressable;
@@ -54,7 +54,7 @@ impl Scenario for SwapTokens {
         env.set_gas(50_000_000_000);
 
         // Get the router contract
-        let mut router = container.contract_ref::<CasperTradeV2Router>(env)?;
+        let mut router = container.contract_ref::<Router>(env)?;
 
         // Get args
         let token_in_input = args.get_single::<String>("token_in")?;

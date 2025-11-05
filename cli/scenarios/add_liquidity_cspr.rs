@@ -1,5 +1,5 @@
 use super::utils::{create_token_ref, parse_token_input};
-use casper_trade_contracts::router::CasperTradeV2Router;
+use casper_trade_contracts::router::Router;
 use odra::casper_types::{U256, U512};
 use odra::host::{HostEnv, HostRef};
 use odra::prelude::Addressable;
@@ -51,7 +51,7 @@ impl Scenario for AddLiquidityCSPR {
         env.set_gas(50_000_000_000);
 
         // Get the router contract
-        let router = container.contract_ref::<CasperTradeV2Router>(env)?;
+        let router = container.contract_ref::<Router>(env)?;
 
         // Get args
         let token_a_input = args.get_single::<String>("token_a")?;

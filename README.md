@@ -1,20 +1,44 @@
 # Casper Trade
 
-A decentralized exchange (DEX) implementation based on Uniswap V2, built for the Casper Network using the Odra framework. Casper Trade provides automated market maker (AMM) functionality with liquidity pools, token swaps, and yield farming capabilities.
+A decentralized exchange (DEX) implementation based on Uniswap V2,
+built for the Casper Network using the Odra framework. 
+Casper Trade provides automated market maker (AMM) functionality
+with liquidity pools, token swaps, and yield farming capabilities.
 
-## Features
+## Architecture
+The implementation tries to follow the Uniswap V2 implementation 1 to 1.
+Due to differences between Casper and EVM, there are some minor
+differences in the architecture:
 
-- **Automated Market Maker (AMM)**: Decentralized token exchange with liquidity pools
-- **Factory Contract**: Manages pair creation and fee collection
-- **Sample Tokens**: CEP-18 compatible tokens for testing and development
-- **CLI Tool**: Command-line interface for deployment and interaction
-- **Casper Network Integration**: Built specifically for Casper blockchain
+### Factory
+Uniswap's version of the factory deploys Pair contracts directly using
+`create2` and Pair's bytecode stored in the Factory contract.
+
+Casper's mechanism is different and Odra's implementation of it is as follows:
+- Odra automatically generates PairFactory contract for the Pair (`factory=on` directive)
+- PairFactory's sole purpose is to manage deployments and upgrades of new Pair contracts
+- Factory's `create_pair` calls `factory()` method of PairFactory contract. PairFactory
+deploys a new Pair contract and returns the address of the new contract to the Factory.
+
+
+### Contracts
+Below is the list of contracts created and used by the project.
+
+- `Pair` - Main pair contract. It will not be deployed directly, instead PairFactory will deploy it in runtime.
+It corresponds to UniswapV2Pair contract from Uniswap.
+- `PairFactory` - Pair contract factory. Its code is generated automatically by Odra. 
+It is responsible for deploying Pair contracts.
+- `Router` - Router contract. It corresponds to UniswapV2Router.
+- `Factory` - Factory contract for pair management. Its corresponding Uniswap contract is UniswapV2Factory.
+- `SampleToken` - Sample CEP-18 token contract used for testing.
+- `WrappedNativeToken` - Token from Odra modules used for testing.
+
 
 ## Prerequisites
 
 - [Rust](https://rustup.rs/) (latest stable version)
 - [cargo-odra](https://github.com/odradev/cargo-odra) - Odra framework CLI tool
-- [Docker](https://www.docker.com/) (for local Casper node testing)
+- [Docker](https://www.docker.com/) (optional - for local Casper node testing)
 
 ## Installation
 
@@ -38,31 +62,14 @@ cargo odra build
 
 ### Using Just Commands
 
-This project uses [just](https://github.com/casey/just) for task automation. Install just if you haven't already:
-
-```bash
-# On macOS
-brew install just
-
-# On Ubuntu/Debian
-sudo apt install just
-
-# On Arch Linux
-sudo pacman -S just
-```
+This project uses [just](https://github.com/casey/just) for task automation.
 
 ### Available Commands
 
 #### Testing
 ```bash
-# Run all tests (OdraVM and Casper backend)
+# Run all tests (Casper backend)
 just test
-
-# Run tests on OdraVM only
-cargo odra test
-
-# Run tests on Casper backend
-cargo odra test -b casper
 ```
 
 #### Code Quality
@@ -109,27 +116,7 @@ To build WASM files for Casper Network deployment:
 cargo odra build -b casper
 ```
 
-The compiled WASM files will be placed in the `wasm/` directory:
-- `CasperTradeV2Pair.wasm` - Main pair contract
-- `Factory.wasm` - Factory contract for pair management
-- `SampleToken.wasm` - Sample CEP-18 token contract
-
-## Testing
-
-### Local Testing (OdraVM)
-```bash
-cargo odra test
-```
-
-### Casper Backend Testing
-```bash
-cargo odra test -b casper
-```
-
-### All Tests
-```bash
-just test
-```
+The compiled WASM files will be placed in the `wasm/` directory.
 
 ## CLI Tool
 
@@ -147,7 +134,7 @@ just cli scenario CreatePair --token0 <address> --token1 <address>
 just cli scenario MintTokens --recipient <address> --amount 1000
 ```
 
-## Local Development
+## Local casper node
 
 ### Setting up Local Casper Node
 

@@ -2,11 +2,11 @@
 //!
 //! This CLI provides deployment and interaction capabilities for the Casper Trade DEX contracts.
 
-use casper_trade_contracts::casper_trade_v2_pair::{
-    CasperTradeV2Pair, CasperTradeV2PairFactory, CasperTradeV2PairHostRef,
+use casper_trade_contracts::pair::{
+    Pair, PairFactory, PairHostRef,
 };
 use casper_trade_contracts::factory::{Factory, FactoryInitArgs};
-use casper_trade_contracts::router::{CasperTradeV2Router, CasperTradeV2RouterInitArgs};
+use casper_trade_contracts::router::{Router, RouterInitArgs};
 use casper_trade_contracts::sample_tokens::{SampleToken, SampleTokenInitArgs};
 use odra::casper_types::U256;
 use odra::host::{Deployer, HostEnv, HostRef, InstallConfig, NoArgs};
@@ -30,7 +30,7 @@ impl DeployScript for ContractsDeployScript {
     ) -> Result<(), odra_cli::deploy::Error> {
         env.set_gas(1_000_000_000_000);
 
-        let pair_factory = CasperTradeV2PairFactory::deploy(env, NoArgs);
+        let pair_factory = PairFactory::deploy(env, NoArgs);
 
         // Deploy Factory contract
         let mut factory = Factory::load_or_deploy_with_cfg(
@@ -108,14 +108,14 @@ impl DeployScript for ContractsDeployScript {
         println!("Wrapped Native Token (WCSPR) deployed successfully!");
 
         // Deploy Router
-        let router = CasperTradeV2Router::load_or_deploy_with_cfg(
+        let router = Router::load_or_deploy_with_cfg(
             env,
             None,
-            CasperTradeV2RouterInitArgs {
+            RouterInitArgs {
                 factory: factory.address(),
                 wcspr: wcspr.address(),
             },
-            InstallConfig::upgradable::<CasperTradeV2Router>(),
+            InstallConfig::upgradable::<Router>(),
             container,
             cspr!(500),
         )?;
@@ -129,19 +129,19 @@ impl DeployScript for ContractsDeployScript {
 
         // Creating TokenA-TokenB pair
         let pair_a_b = factory.create_pair(token_a.address(), token_b.address());
-        let pair_a_b_contract = CasperTradeV2PairHostRef::new(pair_a_b, env.clone());
+        let pair_a_b_contract = PairHostRef::new(pair_a_b, env.clone());
         container.add_contract_named(&pair_a_b_contract, Some("TokenA_TokenB".to_string()))?;
         println!("  ✓ TokenA-TokenB pair created and initialized");
 
         // Create TokenA-WCSPR pair
         let pair_a_wcspr = factory.create_pair(token_a.address(), wcspr.address());
-        let pair_a_wcspr_contract = CasperTradeV2PairHostRef::new(pair_a_wcspr, env.clone());
+        let pair_a_wcspr_contract = PairHostRef::new(pair_a_wcspr, env.clone());
         println!("  ✓ TokenA-WCSPR pair created and initialized");
         container.add_contract_named(&pair_a_wcspr_contract, Some("TokenA_WCSPR".to_string()))?;
 
         // Create TokenB-WCSPR pair
         let pair_b_wcspr = factory.create_pair(token_b.address(), wcspr.address());
-        let pair_b_wcspr_contract = CasperTradeV2PairHostRef::new(pair_b_wcspr, env.clone());
+        let pair_b_wcspr_contract = PairHostRef::new(pair_b_wcspr, env.clone());
         println!("  ✓ TokenB-WCSPR pair created and initialized");
         container.add_contract_named(&pair_b_wcspr_contract, Some("TokenB_WCSPR".to_string()))?;
 
@@ -171,14 +171,14 @@ pub fn main() {
         .about("Casper Trade CLI - Automated Market Maker on Casper Network")
         .deploy(ContractsDeployScript)
         .contract::<Factory>()
-        .contract::<CasperTradeV2Router>()
+        .contract::<Router>()
         .contract::<WrappedNativeToken>()
-        .contract::<CasperTradeV2PairFactory>()
+        .contract::<PairFactory>()
         .named_contract::<SampleToken>("SampleTokenA".to_string())
         .named_contract::<SampleToken>("SampleTokenB".to_string())
-        .named_contract::<CasperTradeV2Pair>("TokenA_TokenB".to_string())
-        .named_contract::<CasperTradeV2Pair>("TokenA_WCSPR".to_string())
-        .named_contract::<CasperTradeV2Pair>("TokenB_WCSPR".to_string())
+        .named_contract::<Pair>("TokenA_TokenB".to_string())
+        .named_contract::<Pair>("TokenA_WCSPR".to_string())
+        .named_contract::<Pair>("TokenB_WCSPR".to_string())
         .scenario(MintTokens)
         .scenario(SetupPair)
         .scenario(AddLiquidity)

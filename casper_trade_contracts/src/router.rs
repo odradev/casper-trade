@@ -11,21 +11,21 @@ use odra_modules::cep18_token::Cep18ContractRef;
 use odra_modules::wrapped_native::WrappedNativeTokenContractRef;
 
 use crate::{
-    casper_trade_v2_pair::CasperTradeV2PairContractRef,
     factory::FactoryContractRef,
-    router::errors::{CasperTradeV2LibraryError, CasperTradeV2RouterError},
+    router::errors::{LibraryError, RouterError},
 };
+use crate::pair::PairContractRef;
 
-/// CasperTradeV2Router - Router contract for Casper Trade V2
+/// Router - Router contract for Casper Trade V2
 /// Based on UniswapV2Router02
 #[odra::module]
-pub struct CasperTradeV2Router {
+pub struct Router {
     factory: Var<Address>,
     wcspr: Var<Address>,
 }
 
 #[odra::module]
-impl CasperTradeV2Router {
+impl Router {
     /// Initializes the router with the factory address
     pub fn init(&mut self, factory: Address, wcspr: Address) {
         self.factory.set(factory);
@@ -35,13 +35,13 @@ impl CasperTradeV2Router {
     /// Returns the factory address
     pub fn factory_address(&self) -> Address {
         self.factory
-            .get_or_revert_with(CasperTradeV2RouterError::Misconfigured)
+            .get_or_revert_with(RouterError::Misconfigured)
     }
 
     /// Returns the WCSPR address
     pub fn wcspr(&self) -> Address {
         self.wcspr
-            .get_or_revert_with(CasperTradeV2RouterError::Misconfigured)
+            .get_or_revert_with(RouterError::Misconfigured)
     }
 
     /// Accepts CSPR deposits from WCSPR contract (equivalent to Solidity's receive() function)
@@ -53,7 +53,7 @@ impl CasperTradeV2Router {
     pub fn deposit(&self) {
         let wcspr = self.wcspr();
         if self.env().caller() != wcspr {
-            self.env().revert(CasperTradeV2RouterError::Misconfigured);
+            self.env().revert(RouterError::Misconfigured);
         }
     }
 
@@ -68,10 +68,10 @@ impl CasperTradeV2Router {
         amount_b_desired: U256,
         amount_a_min: U256,
         amount_b_min: U256,
-    ) -> (U256, U256, CasperTradeV2PairContractRef) {
+    ) -> (U256, U256, PairContractRef) {
         let pair = self.factory_instance().get_pair(token_a, token_b);
         let pair = pair.unwrap_or_else(|| self.factory_instance().create_pair(token_a, token_b));
-        let pair_instance = CasperTradeV2PairContractRef::new(self.env(), pair);
+        let pair_instance = PairContractRef::new(self.env(), pair);
         let (reserve_a, reserve_b, _) = pair_instance.get_reserves();
         if reserve_a.is_zero() && reserve_b.is_zero() {
             (amount_a_desired, amount_b_desired, pair_instance)
@@ -80,14 +80,14 @@ impl CasperTradeV2Router {
             if amount_b_optimal <= amount_b_desired {
                 if amount_b_optimal < amount_b_min {
                     self.env()
-                        .revert(CasperTradeV2RouterError::InsufficientBAmount);
+                        .revert(RouterError::InsufficientBAmount);
                 }
                 (amount_a_desired, amount_b_optimal, pair_instance)
             } else {
                 let amount_a_optimal = self.quote(amount_b_desired, reserve_b, reserve_a);
                 if amount_a_optimal < amount_a_min {
                     self.env()
-                        .revert(CasperTradeV2RouterError::InsufficientAAmount);
+                        .revert(RouterError::InsufficientAAmount);
                 }
                 (amount_a_optimal, amount_b_desired, pair_instance)
             }
@@ -108,7 +108,7 @@ impl CasperTradeV2Router {
         deadline: u64,
     ) -> (U256, U256, U256) {
         if self.env().get_block_time() > deadline {
-            self.env().revert(CasperTradeV2RouterError::Expired);
+            self.env().revert(RouterError::Expired);
         }
 
         let (amount_a, amount_b, mut pair_instance) = self._add_liquidity(
@@ -142,7 +142,7 @@ impl CasperTradeV2Router {
         deadline: u64,
     ) -> (U256, U256, U256) {
         if self.env().get_block_time() > deadline {
-            self.env().revert(CasperTradeV2RouterError::Expired);
+            self.env().revert(RouterError::Expired);
         }
 
         let wcspr = self.wcspr();
@@ -197,11 +197,11 @@ impl CasperTradeV2Router {
         deadline: u64,
     ) -> (U256, U256) {
         if self.env().get_block_time() > deadline {
-            self.env().revert(CasperTradeV2RouterError::Expired);
+            self.env().revert(RouterError::Expired);
         }
 
         let pair_address = self.pair_for(token_a, token_b);
-        let mut pair = CasperTradeV2PairContractRef::new(self.env(), pair_address);
+        let mut pair = PairContractRef::new(self.env(), pair_address);
 
         // Transfer liquidity tokens to pair
         pair.transfer_from(&self.env().caller(), &pair_address, &liquidity);
@@ -220,11 +220,11 @@ impl CasperTradeV2Router {
         // Verify minimum amounts
         if amount_a < amount_a_min {
             self.env()
-                .revert(CasperTradeV2RouterError::InsufficientAAmount);
+                .revert(RouterError::InsufficientAAmount);
         }
         if amount_b < amount_b_min {
             self.env()
-                .revert(CasperTradeV2RouterError::InsufficientBAmount);
+                .revert(RouterError::InsufficientBAmount);
         }
 
         (amount_a, amount_b)
@@ -274,7 +274,7 @@ impl CasperTradeV2Router {
             let amount_out = amounts[i + 1];
             // Map outputs using the pair's actual token0 ordering
             let pair_address = self.pair_for(input, output);
-            let mut pair = CasperTradeV2PairContractRef::new(self.env(), pair_address);
+            let mut pair = PairContractRef::new(self.env(), pair_address);
             let pair_token0 = pair.token0();
             let (amount0_out, amount1_out) = if input == pair_token0 {
                 (U256::zero(), amount_out)
@@ -301,14 +301,14 @@ impl CasperTradeV2Router {
     ) -> Vec<U256> {
         // Check deadline
         if self.env().get_block_time() > deadline {
-            self.env().revert(CasperTradeV2RouterError::Expired);
+            self.env().revert(RouterError::Expired);
         }
 
         // Calculate amounts
         let amounts = self.get_amounts_out(amount_in, path.clone());
         if amounts[amounts.len() - 1] < amount_out_min {
             self.env()
-                .revert(CasperTradeV2RouterError::InsufficientOutputAmount);
+                .revert(RouterError::InsufficientOutputAmount);
         }
 
         // Transfer input tokens to first pair
@@ -333,14 +333,14 @@ impl CasperTradeV2Router {
     ) -> Vec<U256> {
         // Check deadline
         if self.env().get_block_time() > deadline {
-            self.env().revert(CasperTradeV2RouterError::Expired);
+            self.env().revert(RouterError::Expired);
         }
 
         // Calculate amounts
         let amounts = self.get_amounts_in(amount_out, path.clone());
         if amounts[0] > amount_in_max {
             self.env()
-                .revert(CasperTradeV2RouterError::ExcessiveInputAmount);
+                .revert(RouterError::ExcessiveInputAmount);
         }
 
         // Transfer input tokens to first pair
@@ -365,14 +365,14 @@ impl CasperTradeV2Router {
     ) -> Vec<U256> {
         // Check deadline
         if self.env().get_block_time() > deadline {
-            self.env().revert(CasperTradeV2RouterError::Expired);
+            self.env().revert(RouterError::Expired);
         }
 
         let wcspr = self.wcspr();
 
         // Verify path starts with WCSPR
         if path[0] != wcspr {
-            self.env().revert(CasperTradeV2RouterError::InvalidPath);
+            self.env().revert(RouterError::InvalidPath);
         }
 
         // Get CSPR amount
@@ -382,7 +382,7 @@ impl CasperTradeV2Router {
         let amounts = self.get_amounts_out(cspr_amount, path.clone());
         if amounts[amounts.len() - 1] < amount_out_min {
             self.env()
-                .revert(CasperTradeV2RouterError::InsufficientOutputAmount);
+                .revert(RouterError::InsufficientOutputAmount);
         }
 
         // Wrap CSPR and transfer to first pair
@@ -409,21 +409,21 @@ impl CasperTradeV2Router {
     ) -> Vec<U256> {
         // Check deadline
         if self.env().get_block_time() > deadline {
-            self.env().revert(CasperTradeV2RouterError::Expired);
+            self.env().revert(RouterError::Expired);
         }
 
         let wcspr = self.wcspr();
 
         // Verify path ends with WCSPR
         if path[path.len() - 1] != wcspr {
-            self.env().revert(CasperTradeV2RouterError::InvalidPath);
+            self.env().revert(RouterError::InvalidPath);
         }
 
         // Calculate amounts
         let amounts = self.get_amounts_in(amount_out, path.clone());
         if amounts[0] > amount_in_max {
             self.env()
-                .revert(CasperTradeV2RouterError::ExcessiveInputAmount);
+                .revert(RouterError::ExcessiveInputAmount);
         }
 
         // Transfer input tokens to first pair
@@ -453,21 +453,21 @@ impl CasperTradeV2Router {
     ) -> Vec<U256> {
         // Check deadline
         if self.env().get_block_time() > deadline {
-            self.env().revert(CasperTradeV2RouterError::Expired);
+            self.env().revert(RouterError::Expired);
         }
 
         let wcspr = self.wcspr();
 
         // Verify path ends with WCSPR
         if path[path.len() - 1] != wcspr {
-            self.env().revert(CasperTradeV2RouterError::InvalidPath);
+            self.env().revert(RouterError::InvalidPath);
         }
 
         // Calculate amounts
         let amounts = self.get_amounts_out(amount_in, path.clone());
         if amounts[amounts.len() - 1] < amount_out_min {
             self.env()
-                .revert(CasperTradeV2RouterError::InsufficientOutputAmount);
+                .revert(RouterError::InsufficientOutputAmount);
         }
 
         // Transfer input tokens to first pair
@@ -497,14 +497,14 @@ impl CasperTradeV2Router {
     ) -> Vec<U256> {
         // Check deadline
         if self.env().get_block_time() > deadline {
-            self.env().revert(CasperTradeV2RouterError::Expired);
+            self.env().revert(RouterError::Expired);
         }
 
         let wcspr = self.wcspr();
 
         // Verify path starts with WCSPR
         if path[0] != wcspr {
-            self.env().revert(CasperTradeV2RouterError::InvalidPath);
+            self.env().revert(RouterError::InvalidPath);
         }
 
         // Get CSPR amount sent
@@ -514,7 +514,7 @@ impl CasperTradeV2Router {
         let amounts = self.get_amounts_in(amount_out, path.clone());
         if amounts[0] > cspr_amount {
             self.env()
-                .revert(CasperTradeV2RouterError::ExcessiveInputAmount);
+                .revert(RouterError::ExcessiveInputAmount);
         }
 
         // Wrap CSPR and transfer to first pair
@@ -541,11 +541,11 @@ impl CasperTradeV2Router {
     pub fn quote(&self, amount_a: U256, reserve_a: U256, reserve_b: U256) -> U256 {
         if amount_a.is_zero() {
             self.env()
-                .revert(CasperTradeV2LibraryError::InsufficientAmount);
+                .revert(LibraryError::InsufficientAmount);
         }
         if reserve_a.is_zero() || reserve_b.is_zero() {
             self.env()
-                .revert(CasperTradeV2LibraryError::InsufficientLiquidity);
+                .revert(LibraryError::InsufficientLiquidity);
         }
         amount_a * reserve_b / reserve_a
     }
@@ -554,11 +554,11 @@ impl CasperTradeV2Router {
     pub fn get_amount_out(&self, amount_in: U256, reserve_in: U256, reserve_out: U256) -> U256 {
         if amount_in.is_zero() {
             self.env()
-                .revert(CasperTradeV2LibraryError::InsufficientInputAmount);
+                .revert(LibraryError::InsufficientInputAmount);
         }
         if reserve_in.is_zero() || reserve_out.is_zero() {
             self.env()
-                .revert(CasperTradeV2LibraryError::InsufficientLiquidity);
+                .revert(LibraryError::InsufficientLiquidity);
         }
         let amount_in_with_fee = amount_in * U256::from(997);
         let numerator = amount_in_with_fee * reserve_out;
@@ -570,11 +570,11 @@ impl CasperTradeV2Router {
     pub fn get_amount_in(&self, amount_out: U256, reserve_in: U256, reserve_out: U256) -> U256 {
         if amount_out.is_zero() {
             self.env()
-                .revert(CasperTradeV2LibraryError::InsufficientOutputAmount);
+                .revert(LibraryError::InsufficientOutputAmount);
         }
         if reserve_in.is_zero() || reserve_out.is_zero() {
             self.env()
-                .revert(CasperTradeV2LibraryError::InsufficientLiquidity);
+                .revert(LibraryError::InsufficientLiquidity);
         }
         let numerator = reserve_in * amount_out * U256::from(1000);
         let denominator = (reserve_out - amount_out) * U256::from(997);
@@ -584,7 +584,7 @@ impl CasperTradeV2Router {
     /// Performs chained getAmountOut calculations on any number of pairs
     pub fn get_amounts_out(&self, amount_in: U256, path: Vec<Address>) -> Vec<U256> {
         if path.len() < 2 {
-            self.env().revert(CasperTradeV2LibraryError::InvalidPath);
+            self.env().revert(LibraryError::InvalidPath);
         }
         let mut amounts = vec![U256::zero(); path.len()];
         amounts[0] = amount_in;
@@ -598,7 +598,7 @@ impl CasperTradeV2Router {
     /// Performs chained getAmountIn calculations on any number of pairs
     pub fn get_amounts_in(&self, amount_out: U256, path: Vec<Address>) -> Vec<U256> {
         if path.len() < 2 {
-            self.env().revert(CasperTradeV2LibraryError::InvalidPath);
+            self.env().revert(LibraryError::InvalidPath);
         }
         let mut amounts = vec![U256::zero(); path.len()];
         let len = amounts.len();
@@ -612,7 +612,7 @@ impl CasperTradeV2Router {
     }
 }
 
-impl CasperTradeV2Router {
+impl Router {
     fn factory_instance(&self) -> FactoryContractRef {
         FactoryContractRef::new(self.env(), self.factory_address())
     }
@@ -624,7 +624,7 @@ impl CasperTradeV2Router {
     /// Fetches and sorts the reserves for a pair
     fn get_reserves(&self, token_a: Address, token_b: Address) -> (U256, U256, Address) {
         let pair_address = self.pair_for(token_a, token_b);
-        let pair = CasperTradeV2PairContractRef::new(self.env(), pair_address);
+        let pair = PairContractRef::new(self.env(), pair_address);
         let (reserve0, reserve1, _) = pair.get_reserves();
         // IMPORTANT: Align reserves with the actual pair token order, not assumed sorted order.
         // Uniswap pairs store token0/token1 in sorted order, but our pairs may be initialized
@@ -642,7 +642,7 @@ impl CasperTradeV2Router {
     fn sort_tokens(&self, token_a: Address, token_b: Address) -> (Address, Address) {
         if token_a == token_b {
             self.env()
-                .revert(CasperTradeV2LibraryError::IdenticalAddresses);
+                .revert(LibraryError::IdenticalAddresses);
         }
         let (token0, token1) = if token_a < token_b {
             (token_a, token_b)
@@ -651,7 +651,7 @@ impl CasperTradeV2Router {
         };
         // Check if token0 is zero address
         if token0 == crate::utils::zero_address() {
-            self.env().revert(CasperTradeV2LibraryError::ZeroAddress);
+            self.env().revert(LibraryError::ZeroAddress);
         }
         (token0, token1)
     }
@@ -661,16 +661,16 @@ impl CasperTradeV2Router {
         // In Uniswap V2, the pair address is calculated, but in Casper we get the address during the deployment
         self.factory_instance()
             .get_pair(token_a, token_b)
-            .unwrap_or_revert_with(&self.env(), errors::CasperTradeV2RouterError::PairNotFound)
+            .unwrap_or_revert_with(&self.env(), errors::RouterError::PairNotFound)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::casper_trade_v2_pair::CasperTradeV2PairFactory;
+    use crate::pair::PairFactory;
     use crate::{
-        casper_trade_v2_pair::{CasperTradeV2PairHostRef, MINIMUM_LIQUIDITY},
+        pair::{PairHostRef, MINIMUM_LIQUIDITY},
         factory::{Factory, FactoryHostRef, FactoryInitArgs},
         sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs},
         utils::{expand_to_18_decimals, expand_to_9_decimals},
@@ -686,14 +686,14 @@ mod tests {
 
     struct RouterEnv {
         pub odra_env: HostEnv,
-        pub router: CasperTradeV2RouterHostRef,
+        pub router: RouterHostRef,
         pub factory: FactoryHostRef,
         pub token0: SampleTokenHostRef,
         pub token1: SampleTokenHostRef,
         pub wcspr: WrappedNativeTokenHostRef,
         pub wcspr_partner: SampleTokenHostRef,
-        pub pair: CasperTradeV2PairHostRef,
-        pub wcspr_pair: CasperTradeV2PairHostRef,
+        pub pair: PairHostRef,
+        pub wcspr_pair: PairHostRef,
         pub owner: Address,
         pub alice: Address,
         pub _bob: Address,
@@ -704,7 +704,7 @@ mod tests {
         let owner = env.get_account(0);
         let alice = env.get_account(1);
         let bob = env.get_account(2);
-        let pair_factory = CasperTradeV2PairFactory::deploy(&env, NoArgs);
+        let pair_factory = PairFactory::deploy(&env, NoArgs);
 
         // Deploy the actual Factory contract
         let mut factory = Factory::deploy(
@@ -719,9 +719,9 @@ mod tests {
         let wcspr = WrappedNativeToken::deploy(&env, NoArgs);
 
         // Deploy Router with the factory and wcspr address
-        let router = CasperTradeV2Router::deploy(
+        let router = Router::deploy(
             &env,
-            CasperTradeV2RouterInitArgs {
+            RouterInitArgs {
                 factory: factory.address(),
                 wcspr: wcspr.address(),
             },
@@ -761,9 +761,9 @@ mod tests {
 
         // Create pairs via factory
         let pair_address = factory.create_pair(token0.address(), token1.address());
-        let pair = CasperTradeV2PairHostRef::new(pair_address, env.clone());
+        let pair = PairHostRef::new(pair_address, env.clone());
         let wcspr_pair_address = factory.create_pair(wcspr.address(), wcspr_partner.address());
-        let wcspr_pair = CasperTradeV2PairHostRef::new(wcspr_pair_address, env.clone());
+        let wcspr_pair = PairHostRef::new(wcspr_pair_address, env.clone());
 
         RouterEnv {
             odra_env: env,
@@ -802,19 +802,19 @@ mod tests {
             env.router
                 .try_quote(U256::from(0), U256::from(100), U256::from(200))
                 .unwrap_err(),
-            CasperTradeV2LibraryError::InsufficientAmount.into()
+            LibraryError::InsufficientAmount.into()
         );
         assert_eq!(
             env.router
                 .try_quote(U256::from(1), U256::from(0), U256::from(200))
                 .unwrap_err(),
-            CasperTradeV2LibraryError::InsufficientLiquidity.into()
+            LibraryError::InsufficientLiquidity.into()
         );
         assert_eq!(
             env.router
                 .try_quote(U256::from(1), U256::from(100), U256::from(0))
                 .unwrap_err(),
-            CasperTradeV2LibraryError::InsufficientLiquidity.into()
+            LibraryError::InsufficientLiquidity.into()
         );
     }
 
@@ -835,19 +835,19 @@ mod tests {
             env.router
                 .try_get_amount_out(U256::from(0), U256::from(100), U256::from(100))
                 .unwrap_err(),
-            CasperTradeV2LibraryError::InsufficientInputAmount.into()
+            LibraryError::InsufficientInputAmount.into()
         );
         assert_eq!(
             env.router
                 .try_get_amount_out(U256::from(2), U256::from(0), U256::from(100))
                 .unwrap_err(),
-            CasperTradeV2LibraryError::InsufficientLiquidity.into()
+            LibraryError::InsufficientLiquidity.into()
         );
         assert_eq!(
             env.router
                 .try_get_amount_out(U256::from(2), U256::from(100), U256::from(0))
                 .unwrap_err(),
-            CasperTradeV2LibraryError::InsufficientLiquidity.into()
+            LibraryError::InsufficientLiquidity.into()
         );
     }
 
@@ -868,19 +868,19 @@ mod tests {
             env.router
                 .try_get_amount_in(U256::from(0), U256::from(100), U256::from(100))
                 .unwrap_err(),
-            CasperTradeV2LibraryError::InsufficientOutputAmount.into()
+            LibraryError::InsufficientOutputAmount.into()
         );
         assert_eq!(
             env.router
                 .try_get_amount_in(U256::from(1), U256::from(0), U256::from(100))
                 .unwrap_err(),
-            CasperTradeV2LibraryError::InsufficientLiquidity.into()
+            LibraryError::InsufficientLiquidity.into()
         );
         assert_eq!(
             env.router
                 .try_get_amount_in(U256::from(1), U256::from(100), U256::from(0))
                 .unwrap_err(),
-            CasperTradeV2LibraryError::InsufficientLiquidity.into()
+            LibraryError::InsufficientLiquidity.into()
         );
     }
 
@@ -908,7 +908,7 @@ mod tests {
             env.router
                 .try_get_amounts_out(U256::from(2), invalid_path)
                 .unwrap_err(),
-            CasperTradeV2LibraryError::InvalidPath.into()
+            LibraryError::InvalidPath.into()
         );
 
         let path = vec![env.token0.address(), env.token1.address()];
@@ -942,7 +942,7 @@ mod tests {
             env.router
                 .try_get_amounts_in(U256::from(1), invalid_path)
                 .unwrap_err(),
-            CasperTradeV2LibraryError::InvalidPath.into()
+            LibraryError::InvalidPath.into()
         );
 
         let path = vec![env.token0.address(), env.token1.address()];
@@ -1000,7 +1000,7 @@ mod tests {
         // Check Sync event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::casper_trade_v2_pair::events::Sync {
+            crate::pair::events::Sync {
                 reserve0: token0_amount,
                 reserve1: token1_amount,
             }
@@ -1009,7 +1009,7 @@ mod tests {
         // Check Mint event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::casper_trade_v2_pair::events::Mint {
+            crate::pair::events::Mint {
                 sender: env.router.address(),
                 amount0: token0_amount,
                 amount1: token1_amount,
@@ -1026,7 +1026,7 @@ mod tests {
     // great name from uniswap tests
     fn add_liquidity(env: &mut RouterEnv, token0_amount: U256, token1_amount: U256) {
         let pair_address = env.pair.address();
-        let mut pair_instance = CasperTradeV2PairHostRef::new(pair_address, env.odra_env.clone());
+        let mut pair_instance = PairHostRef::new(pair_address, env.odra_env.clone());
         let mut token0_instance = Cep18HostRef::new(pair_instance.token0(), env.odra_env.clone());
         let mut token1_instance = Cep18HostRef::new(pair_instance.token1(), env.odra_env.clone());
         token0_instance.transfer(&pair_instance.address(), &token0_amount);
@@ -1042,7 +1042,7 @@ mod tests {
         let cspr_pair_address = env
             .factory
             .create_pair(env.token0.address(), env.wcspr.address());
-        let cspr_pair = CasperTradeV2PairHostRef::new(cspr_pair_address, env.odra_env.clone());
+        let cspr_pair = PairHostRef::new(cspr_pair_address, env.odra_env.clone());
 
         let token_amount = expand_to_18_decimals(1);
         let cspr_amount = expand_to_9_decimals(4);
@@ -1092,7 +1092,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &cspr_pair,
-            crate::casper_trade_v2_pair::events::Sync { reserve0, reserve1 }
+            crate::pair::events::Sync { reserve0, reserve1 }
         ));
 
         // Check Mint event (need to determine token order)
@@ -1104,7 +1104,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &cspr_pair,
-            crate::casper_trade_v2_pair::events::Mint {
+            crate::pair::events::Mint {
                 sender: env.router.address(),
                 amount0,
                 amount1,
@@ -1174,7 +1174,7 @@ mod tests {
         // Check Sync event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::casper_trade_v2_pair::events::Sync {
+            crate::pair::events::Sync {
                 reserve0: U256::from(500),
                 reserve1: U256::from(2000),
             }
@@ -1183,7 +1183,7 @@ mod tests {
         // Check Burn event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::casper_trade_v2_pair::events::Burn {
+            crate::pair::events::Burn {
                 sender: env.router.address(),
                 amount0: token0_amount - U256::from(500),
                 amount1: token1_amount - U256::from(2000),
@@ -1282,7 +1282,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::casper_trade_v2_pair::events::Sync { reserve0, reserve1 }
+            crate::pair::events::Sync { reserve0, reserve1 }
         ));
 
         // Check Burn event (need to determine token order)
@@ -1300,7 +1300,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::casper_trade_v2_pair::events::Burn {
+            crate::pair::events::Burn {
                 sender: env.router.address(),
                 amount0,
                 amount1,
@@ -1372,7 +1372,7 @@ mod tests {
         // Check Sync event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::casper_trade_v2_pair::events::Sync {
+            crate::pair::events::Sync {
                 reserve0: token0_amount + swap_amount,
                 reserve1: token1_amount - expected_output_amount,
             }
@@ -1381,7 +1381,7 @@ mod tests {
         // Check Swap event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::casper_trade_v2_pair::events::Swap {
+            crate::pair::events::Swap {
                 sender: env.router.address(),
                 amount0_in: swap_amount,
                 amount1_in: U256::zero(),
@@ -1470,7 +1470,7 @@ mod tests {
         // Check Sync event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::casper_trade_v2_pair::events::Sync {
+            crate::pair::events::Sync {
                 reserve0: token0_amount + expected_swap_amount,
                 reserve1: token1_amount - output_amount,
             }
@@ -1479,7 +1479,7 @@ mod tests {
         // Check Swap event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::casper_trade_v2_pair::events::Swap {
+            crate::pair::events::Swap {
                 sender: env.router.address(),
                 amount0_in: expected_swap_amount,
                 amount1_in: U256::zero(),
@@ -1581,7 +1581,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::casper_trade_v2_pair::events::Sync { reserve0, reserve1 }
+            crate::pair::events::Sync { reserve0, reserve1 }
         ));
 
         // Check Swap event (determine token order)
@@ -1604,7 +1604,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::casper_trade_v2_pair::events::Swap {
+            crate::pair::events::Swap {
                 sender: env.router.address(),
                 amount0_in,
                 amount1_in,
@@ -1712,7 +1712,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::casper_trade_v2_pair::events::Sync { reserve0, reserve1 }
+            crate::pair::events::Sync { reserve0, reserve1 }
         ));
 
         // Check Swap event (determine token order)
@@ -1735,7 +1735,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::casper_trade_v2_pair::events::Swap {
+            crate::pair::events::Swap {
                 sender: env.router.address(),
                 amount0_in,
                 amount1_in,
@@ -1844,7 +1844,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::casper_trade_v2_pair::events::Sync { reserve0, reserve1 }
+            crate::pair::events::Sync { reserve0, reserve1 }
         ));
 
         // Check Swap event (determine token order)
@@ -1867,7 +1867,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::casper_trade_v2_pair::events::Swap {
+            crate::pair::events::Swap {
                 sender: env.router.address(),
                 amount0_in,
                 amount1_in,
@@ -1973,7 +1973,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::casper_trade_v2_pair::events::Sync { reserve0, reserve1 }
+            crate::pair::events::Sync { reserve0, reserve1 }
         ));
 
         // Check Swap event (determine token order)
@@ -1996,7 +1996,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::casper_trade_v2_pair::events::Swap {
+            crate::pair::events::Swap {
                 sender: env.router.address(),
                 amount0_in,
                 amount1_in,

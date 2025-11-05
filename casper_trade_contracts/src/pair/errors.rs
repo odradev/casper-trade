@@ -1,7 +1,7 @@
 use odra::prelude::OdraError;
 
 #[odra::odra_error]
-pub enum CasperTradeV2PairError {
+pub enum PairError {
     /// The pair is not properly configured.
     Misconfigured = 20001,
     /// The caller is not allowed to perform this action.

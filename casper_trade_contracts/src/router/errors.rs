@@ -1,7 +1,7 @@
 use odra::prelude::OdraError;
 
 #[odra::odra_error]
-pub enum CasperTradeV2RouterError {
+pub enum RouterError {
     Misconfigured = 21000,
     Expired = 21001,
     InsufficientAAmount = 21002,
@@ -15,7 +15,7 @@ pub enum CasperTradeV2RouterError {
 
 // Library error types merged from casper_trade_v2_library
 #[odra::odra_error]
-pub enum CasperTradeV2LibraryError {
+pub enum LibraryError {
     IdenticalAddresses = 1,
     ZeroAddress = 2,
     InsufficientAmount = 3,
