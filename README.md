@@ -66,9 +66,9 @@ cd casper-trade
 cargo install cargo-odra
 ```
 
-3. Build the project:
+3. Run the tests:
 ```bash
-cargo odra build
+just test
 ```
 
 ## Quick Start
@@ -170,5 +170,5 @@ just cli-on-nctl contract Factory fee_to
 
 - [Odra Framework](https://odra.dev/docs)
 - [Casper Network](https://casper.network/)
-- [Uniswap V2](https://uniswap.org/docs/v2/)
-- [CEP-18 Standard](https://github.com/casper-ecosystem/cep-18)
+- [Uniswap V2](https://docs.uniswap.org/contracts/v2/overview)
+- [CEP-18 Standard](https://github.com/casper-ecosystem/cep18)

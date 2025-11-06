@@ -46,7 +46,7 @@
   "entry_points": [
     {
       "name": "fee_to",
-      "description": "",
+      "description": "Returns the `fee_to`",
       "is_mutable": false,
       "arguments": [],
       "return_ty": {
@@ -57,7 +57,7 @@
     },
     {
       "name": "set_fee_to",
-      "description": "",
+      "description": "Sets `fee_to`",
       "is_mutable": true,
       "arguments": [
         {
@@ -75,7 +75,7 @@
     },
     {
       "name": "create_pair",
-      "description": "Creates a pair for the given tokens.ists, it will return existing one.",
+      "description": "Creates a pair for the given tokens. If it exists, it will return existing one.",
       "is_mutable": true,
       "arguments": [
         {

@@ -981,7 +981,7 @@ mod tests {
         // Check Sync event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::pair::events::Sync {
+            crate::pair::events::PairSync {
                 reserve0: token0_amount,
                 reserve1: token1_amount,
             }
@@ -990,7 +990,7 @@ mod tests {
         // Check Mint event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::pair::events::Mint {
+            crate::pair::events::PairMint {
                 sender: env.router.address(),
                 amount0: token0_amount,
                 amount1: token1_amount,
@@ -1071,9 +1071,10 @@ mod tests {
             (cspr_amount, token_amount)
         };
 
-        assert!(env
-            .odra_env
-            .emitted_event(&cspr_pair, crate::pair::events::Sync { reserve0, reserve1 }));
+        assert!(env.odra_env.emitted_event(
+            &cspr_pair,
+            crate::pair::events::PairSync { reserve0, reserve1 }
+        ));
 
         // Check Mint event (need to determine token order)
         let (amount0, amount1) = if token0_addr == env.token0.address() {
@@ -1084,7 +1085,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &cspr_pair,
-            crate::pair::events::Mint {
+            crate::pair::events::PairMint {
                 sender: env.router.address(),
                 amount0,
                 amount1,
@@ -1154,7 +1155,7 @@ mod tests {
         // Check Sync event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::pair::events::Sync {
+            crate::pair::events::PairSync {
                 reserve0: U256::from(500),
                 reserve1: U256::from(2000),
             }
@@ -1163,7 +1164,7 @@ mod tests {
         // Check Burn event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::pair::events::Burn {
+            crate::pair::events::PairBurn {
                 sender: env.router.address(),
                 amount0: token0_amount - U256::from(500),
                 amount1: token1_amount - U256::from(2000),
@@ -1262,7 +1263,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::pair::events::Sync { reserve0, reserve1 }
+            crate::pair::events::PairSync { reserve0, reserve1 }
         ));
 
         // Check Burn event (need to determine token order)
@@ -1280,7 +1281,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::pair::events::Burn {
+            crate::pair::events::PairBurn {
                 sender: env.router.address(),
                 amount0,
                 amount1,
@@ -1352,7 +1353,7 @@ mod tests {
         // Check Sync event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::pair::events::Sync {
+            crate::pair::events::PairSync {
                 reserve0: token0_amount + swap_amount,
                 reserve1: token1_amount - expected_output_amount,
             }
@@ -1361,7 +1362,7 @@ mod tests {
         // Check Swap event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::pair::events::Swap {
+            crate::pair::events::PairSwap {
                 sender: env.router.address(),
                 amount0_in: swap_amount,
                 amount1_in: U256::zero(),
@@ -1450,7 +1451,7 @@ mod tests {
         // Check Sync event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::pair::events::Sync {
+            crate::pair::events::PairSync {
                 reserve0: token0_amount + expected_swap_amount,
                 reserve1: token1_amount - output_amount,
             }
@@ -1459,7 +1460,7 @@ mod tests {
         // Check Swap event
         assert!(env.odra_env.emitted_event(
             &env.pair,
-            crate::pair::events::Swap {
+            crate::pair::events::PairSwap {
                 sender: env.router.address(),
                 amount0_in: expected_swap_amount,
                 amount1_in: U256::zero(),
@@ -1561,7 +1562,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::pair::events::Sync { reserve0, reserve1 }
+            crate::pair::events::PairSync { reserve0, reserve1 }
         ));
 
         // Check Swap event (determine token order)
@@ -1584,7 +1585,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::pair::events::Swap {
+            crate::pair::events::PairSwap {
                 sender: env.router.address(),
                 amount0_in,
                 amount1_in,
@@ -1692,7 +1693,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::pair::events::Sync { reserve0, reserve1 }
+            crate::pair::events::PairSync { reserve0, reserve1 }
         ));
 
         // Check Swap event (determine token order)
@@ -1715,7 +1716,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::pair::events::Swap {
+            crate::pair::events::PairSwap {
                 sender: env.router.address(),
                 amount0_in,
                 amount1_in,
@@ -1824,7 +1825,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::pair::events::Sync { reserve0, reserve1 }
+            crate::pair::events::PairSync { reserve0, reserve1 }
         ));
 
         // Check Swap event (determine token order)
@@ -1847,7 +1848,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::pair::events::Swap {
+            crate::pair::events::PairSwap {
                 sender: env.router.address(),
                 amount0_in,
                 amount1_in,
@@ -1953,7 +1954,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::pair::events::Sync { reserve0, reserve1 }
+            crate::pair::events::PairSync { reserve0, reserve1 }
         ));
 
         // Check Swap event (determine token order)
@@ -1976,7 +1977,7 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.wcspr_pair,
-            crate::pair::events::Swap {
+            crate::pair::events::PairSwap {
                 sender: env.router.address(),
                 amount0_in,
                 amount1_in,

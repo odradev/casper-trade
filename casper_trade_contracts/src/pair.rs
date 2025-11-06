@@ -10,7 +10,7 @@ use crate::{
     factory::FactoryContractRef,
     pair::{
         errors::PairError,
-        events::{Burn, Mint, Swap, Sync},
+        events::{PairBurn, PairMint, PairSwap, PairSync},
     },
     utils::zero_address,
 };
@@ -21,7 +21,7 @@ pub mod events;
 pub const MINIMUM_LIQUIDITY: u64 = 1000;
 
 /// Pair contract - implementation based on Uniswap V2
-#[odra::module(factory=on, events = [Mint, Burn, Swap, Sync], errors = PairError)]
+#[odra::module(factory=on, events = [PairMint, PairBurn, PairSwap, PairSync], errors = PairError)]
 pub struct Pair {
     pub token: SubModule<Cep18>,
     pub factory: Var<Address>,
@@ -114,7 +114,7 @@ impl Pair {
             self.k_last.set(balance0 * balance1);
         }
 
-        self.env().emit_event(Mint {
+        self.env().emit_event(PairMint {
             sender: self.env().caller(),
             amount0,
             amount1,
@@ -179,7 +179,7 @@ impl Pair {
         }
 
         // Emit Burn event
-        self.env().emit_event(Burn {
+        self.env().emit_event(PairBurn {
             sender: self.env().caller(),
             amount0,
             amount1,
@@ -269,7 +269,7 @@ impl Pair {
         self._update(balance0, balance1, reserve0, reserve1);
 
         // Emit Swap event
-        self.env().emit_event(Swap {
+        self.env().emit_event(PairSwap {
             sender: self.env().caller(),
             amount0_in,
             amount1_in,
@@ -382,7 +382,7 @@ impl Pair {
         self.block_timestamp_last.set(block_timestamp);
 
         // Emit Sync event
-        self.env().emit_event(Sync {
+        self.env().emit_event(PairSync {
             reserve0: balance0,
             reserve1: balance1,
         });
