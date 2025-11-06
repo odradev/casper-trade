@@ -7,11 +7,11 @@ use odra_modules::cep18_token::{Cep18, Cep18ContractRef};
 
 use crate::{
     callee::CasperTradeCalleeContractRef,
+    factory::FactoryContractRef,
     pair::{
         errors::PairError,
         events::{Burn, Mint, Swap, Sync},
     },
-    factory::FactoryContractRef,
     utils::zero_address,
 };
 
@@ -103,8 +103,7 @@ impl Pair {
         };
 
         if liquidity.is_zero() {
-            self.env()
-                .revert(PairError::InsufficientLiquidityMinted);
+            self.env().revert(PairError::InsufficientLiquidityMinted);
         }
 
         self.token.raw_mint(&to, &liquidity);
@@ -151,8 +150,7 @@ impl Pair {
 
         // Require both amounts > 0
         if amount0.is_zero() || amount1.is_zero() {
-            self.env()
-                .revert(PairError::InsufficientLiquidityBurned);
+            self.env().revert(PairError::InsufficientLiquidityBurned);
         }
 
         // Burn liquidity tokens
@@ -195,8 +193,7 @@ impl Pair {
     pub fn swap(&mut self, amount0_out: U256, amount1_out: U256, to: Address, data: Option<Bytes>) {
         // Require at least one output amount to be > 0
         if amount0_out.is_zero() && amount1_out.is_zero() {
-            self.env()
-                .revert(PairError::InsufficientOutputAmount);
+            self.env().revert(PairError::InsufficientOutputAmount);
         }
 
         // Get reserves
@@ -205,17 +202,12 @@ impl Pair {
 
         // Require outputs are less than reserves
         if amount0_out >= reserve0 || amount1_out >= reserve1 {
-            self.env()
-                .revert(PairError::InsufficientLiquidity);
+            self.env().revert(PairError::InsufficientLiquidity);
         }
 
         // Get token addresses
-        let token0_addr = self
-            .token0
-            .get_or_revert_with(PairError::NotInitialized);
-        let token1_addr = self
-            .token1
-            .get_or_revert_with(PairError::NotInitialized);
+        let token0_addr = self.token0.get_or_revert_with(PairError::NotInitialized);
+        let token1_addr = self.token1.get_or_revert_with(PairError::NotInitialized);
 
         // Validate recipient is not one of the token addresses
         if to == token0_addr || to == token1_addr {
@@ -259,8 +251,7 @@ impl Pair {
 
         // Require at least one input amount > 0
         if amount0_in.is_zero() && amount1_in.is_zero() {
-            self.env()
-                .revert(PairError::InsufficientInputAmount);
+            self.env().revert(PairError::InsufficientInputAmount);
         }
 
         // Check K invariant with 0.3% fee
@@ -354,13 +345,11 @@ impl Pair {
     }
 
     pub fn token0(&self) -> Address {
-        self.token0
-            .get_or_revert_with(PairError::NotInitialized)
+        self.token0.get_or_revert_with(PairError::NotInitialized)
     }
 
     pub fn token1(&self) -> Address {
-        self.token1
-            .get_or_revert_with(PairError::NotInitialized)
+        self.token1.get_or_revert_with(PairError::NotInitialized)
     }
 
     // Take a closer look during code review to confirm the soundness of this function
@@ -437,24 +426,21 @@ impl Pair {
     fn factory_contract(&self) -> FactoryContractRef {
         FactoryContractRef::new(
             self.env(),
-            self.factory
-                .get_or_revert_with(PairError::NotInitialized),
+            self.factory.get_or_revert_with(PairError::NotInitialized),
         )
     }
 
     fn token0_instance(&self) -> Cep18ContractRef {
         Cep18ContractRef::new(
             self.env(),
-            self.token0
-                .get_or_revert_with(PairError::NotInitialized),
+            self.token0.get_or_revert_with(PairError::NotInitialized),
         )
     }
 
     fn token1_instance(&self) -> Cep18ContractRef {
         Cep18ContractRef::new(
             self.env(),
-            self.token1
-                .get_or_revert_with(PairError::NotInitialized),
+            self.token1.get_or_revert_with(PairError::NotInitialized),
         )
     }
 }

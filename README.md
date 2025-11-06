@@ -7,6 +7,11 @@ with liquidity pools, token swaps, and yield farming capabilities.
 
 ## Architecture
 The implementation tries to follow the Uniswap V2 implementation 1 to 1.
+It is based on the two following repositories:
+ 
+- https://github.com/Uniswap/v2-periphery
+- https://github.com/Uniswap/v2-core
+
 Due to differences between Casper and EVM, there are some minor
 differences in the architecture:
 
@@ -20,6 +25,14 @@ Casper's mechanism is different and Odra's implementation of it is as follows:
 - Factory's `create_pair` calls `factory()` method of PairFactory contract. PairFactory
 deploys a new Pair contract and returns the address of the new contract to the Factory.
 
+### Tests
+Tests are based on the original Uniswap tests to ensure parity.
+Router tests are based on UniswapV2Router01.spec.ts and UniswapV2Router02.spec.ts
+from `v2-periphery` repository.
+
+Factory tests are based on UniswapV2Factory.spec.ts from `v2-core` repository.
+
+Pair tests are based on UniswapV2Pair.spec.ts from `v2-core` repository.
 
 ### Contracts
 Below is the list of contracts created and used by the project.
@@ -155,7 +168,7 @@ just cli-on-nctl contract Factory fee_to
 
 ## Resources
 
-- [Odra Framework](https://odra.dev/)
+- [Odra Framework](https://odra.dev/docs)
 - [Casper Network](https://casper.network/)
 - [Uniswap V2](https://uniswap.org/docs/v2/)
 - [CEP-18 Standard](https://github.com/casper-ecosystem/cep-18)

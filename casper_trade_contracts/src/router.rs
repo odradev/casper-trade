@@ -10,11 +10,11 @@ use odra::{
 use odra_modules::cep18_token::Cep18ContractRef;
 use odra_modules::wrapped_native::WrappedNativeTokenContractRef;
 
+use crate::pair::PairContractRef;
 use crate::{
     factory::FactoryContractRef,
     router::errors::{LibraryError, RouterError},
 };
-use crate::pair::PairContractRef;
 
 /// Router - Router contract for Casper Trade V2
 /// Based on UniswapV2Router02
@@ -34,14 +34,12 @@ impl Router {
 
     /// Returns the factory address
     pub fn factory_address(&self) -> Address {
-        self.factory
-            .get_or_revert_with(RouterError::Misconfigured)
+        self.factory.get_or_revert_with(RouterError::Misconfigured)
     }
 
     /// Returns the WCSPR address
     pub fn wcspr(&self) -> Address {
-        self.wcspr
-            .get_or_revert_with(RouterError::Misconfigured)
+        self.wcspr.get_or_revert_with(RouterError::Misconfigured)
     }
 
     /// Accepts CSPR deposits from WCSPR contract (equivalent to Solidity's receive() function)
@@ -79,15 +77,13 @@ impl Router {
             let amount_b_optimal = self.quote(amount_a_desired, reserve_a, reserve_b);
             if amount_b_optimal <= amount_b_desired {
                 if amount_b_optimal < amount_b_min {
-                    self.env()
-                        .revert(RouterError::InsufficientBAmount);
+                    self.env().revert(RouterError::InsufficientBAmount);
                 }
                 (amount_a_desired, amount_b_optimal, pair_instance)
             } else {
                 let amount_a_optimal = self.quote(amount_b_desired, reserve_b, reserve_a);
                 if amount_a_optimal < amount_a_min {
-                    self.env()
-                        .revert(RouterError::InsufficientAAmount);
+                    self.env().revert(RouterError::InsufficientAAmount);
                 }
                 (amount_a_optimal, amount_b_desired, pair_instance)
             }
@@ -219,12 +215,10 @@ impl Router {
 
         // Verify minimum amounts
         if amount_a < amount_a_min {
-            self.env()
-                .revert(RouterError::InsufficientAAmount);
+            self.env().revert(RouterError::InsufficientAAmount);
         }
         if amount_b < amount_b_min {
-            self.env()
-                .revert(RouterError::InsufficientBAmount);
+            self.env().revert(RouterError::InsufficientBAmount);
         }
 
         (amount_a, amount_b)
@@ -307,8 +301,7 @@ impl Router {
         // Calculate amounts
         let amounts = self.get_amounts_out(amount_in, path.clone());
         if amounts[amounts.len() - 1] < amount_out_min {
-            self.env()
-                .revert(RouterError::InsufficientOutputAmount);
+            self.env().revert(RouterError::InsufficientOutputAmount);
         }
 
         // Transfer input tokens to first pair
@@ -339,8 +332,7 @@ impl Router {
         // Calculate amounts
         let amounts = self.get_amounts_in(amount_out, path.clone());
         if amounts[0] > amount_in_max {
-            self.env()
-                .revert(RouterError::ExcessiveInputAmount);
+            self.env().revert(RouterError::ExcessiveInputAmount);
         }
 
         // Transfer input tokens to first pair
@@ -381,8 +373,7 @@ impl Router {
         // Calculate amounts
         let amounts = self.get_amounts_out(cspr_amount, path.clone());
         if amounts[amounts.len() - 1] < amount_out_min {
-            self.env()
-                .revert(RouterError::InsufficientOutputAmount);
+            self.env().revert(RouterError::InsufficientOutputAmount);
         }
 
         // Wrap CSPR and transfer to first pair
@@ -422,8 +413,7 @@ impl Router {
         // Calculate amounts
         let amounts = self.get_amounts_in(amount_out, path.clone());
         if amounts[0] > amount_in_max {
-            self.env()
-                .revert(RouterError::ExcessiveInputAmount);
+            self.env().revert(RouterError::ExcessiveInputAmount);
         }
 
         // Transfer input tokens to first pair
@@ -466,8 +456,7 @@ impl Router {
         // Calculate amounts
         let amounts = self.get_amounts_out(amount_in, path.clone());
         if amounts[amounts.len() - 1] < amount_out_min {
-            self.env()
-                .revert(RouterError::InsufficientOutputAmount);
+            self.env().revert(RouterError::InsufficientOutputAmount);
         }
 
         // Transfer input tokens to first pair
@@ -513,8 +502,7 @@ impl Router {
         // Calculate amounts
         let amounts = self.get_amounts_in(amount_out, path.clone());
         if amounts[0] > cspr_amount {
-            self.env()
-                .revert(RouterError::ExcessiveInputAmount);
+            self.env().revert(RouterError::ExcessiveInputAmount);
         }
 
         // Wrap CSPR and transfer to first pair
@@ -540,12 +528,10 @@ impl Router {
     /// Given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
     pub fn quote(&self, amount_a: U256, reserve_a: U256, reserve_b: U256) -> U256 {
         if amount_a.is_zero() {
-            self.env()
-                .revert(LibraryError::InsufficientAmount);
+            self.env().revert(LibraryError::InsufficientAmount);
         }
         if reserve_a.is_zero() || reserve_b.is_zero() {
-            self.env()
-                .revert(LibraryError::InsufficientLiquidity);
+            self.env().revert(LibraryError::InsufficientLiquidity);
         }
         amount_a * reserve_b / reserve_a
     }
@@ -553,12 +539,10 @@ impl Router {
     /// Given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
     pub fn get_amount_out(&self, amount_in: U256, reserve_in: U256, reserve_out: U256) -> U256 {
         if amount_in.is_zero() {
-            self.env()
-                .revert(LibraryError::InsufficientInputAmount);
+            self.env().revert(LibraryError::InsufficientInputAmount);
         }
         if reserve_in.is_zero() || reserve_out.is_zero() {
-            self.env()
-                .revert(LibraryError::InsufficientLiquidity);
+            self.env().revert(LibraryError::InsufficientLiquidity);
         }
         let amount_in_with_fee = amount_in * U256::from(997);
         let numerator = amount_in_with_fee * reserve_out;
@@ -569,12 +553,10 @@ impl Router {
     /// Given an output amount of an asset and pair reserves, returns a required input amount of the other asset
     pub fn get_amount_in(&self, amount_out: U256, reserve_in: U256, reserve_out: U256) -> U256 {
         if amount_out.is_zero() {
-            self.env()
-                .revert(LibraryError::InsufficientOutputAmount);
+            self.env().revert(LibraryError::InsufficientOutputAmount);
         }
         if reserve_in.is_zero() || reserve_out.is_zero() {
-            self.env()
-                .revert(LibraryError::InsufficientLiquidity);
+            self.env().revert(LibraryError::InsufficientLiquidity);
         }
         let numerator = reserve_in * amount_out * U256::from(1000);
         let denominator = (reserve_out - amount_out) * U256::from(997);
@@ -641,8 +623,7 @@ impl Router {
     /// Returns sorted token addresses, used to handle return values from pairs sorted in this order
     fn sort_tokens(&self, token_a: Address, token_b: Address) -> (Address, Address) {
         if token_a == token_b {
-            self.env()
-                .revert(LibraryError::IdenticalAddresses);
+            self.env().revert(LibraryError::IdenticalAddresses);
         }
         let (token0, token1) = if token_a < token_b {
             (token_a, token_b)
@@ -670,8 +651,8 @@ mod tests {
     use super::*;
     use crate::pair::PairFactory;
     use crate::{
-        pair::{PairHostRef, MINIMUM_LIQUIDITY},
         factory::{Factory, FactoryHostRef, FactoryInitArgs},
+        pair::{PairHostRef, MINIMUM_LIQUIDITY},
         sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs},
         utils::{expand_to_18_decimals, expand_to_9_decimals},
     };
@@ -1090,10 +1071,9 @@ mod tests {
             (cspr_amount, token_amount)
         };
 
-        assert!(env.odra_env.emitted_event(
-            &cspr_pair,
-            crate::pair::events::Sync { reserve0, reserve1 }
-        ));
+        assert!(env
+            .odra_env
+            .emitted_event(&cspr_pair, crate::pair::events::Sync { reserve0, reserve1 }));
 
         // Check Mint event (need to determine token order)
         let (amount0, amount1) = if token0_addr == env.token0.address() {

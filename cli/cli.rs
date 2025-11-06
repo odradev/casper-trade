@@ -2,10 +2,8 @@
 //!
 //! This CLI provides deployment and interaction capabilities for the Casper Trade DEX contracts.
 
-use casper_trade_contracts::pair::{
-    Pair, PairFactory, PairHostRef,
-};
 use casper_trade_contracts::factory::{Factory, FactoryInitArgs};
+use casper_trade_contracts::pair::{Pair, PairFactory, PairHostRef};
 use casper_trade_contracts::router::{Router, RouterInitArgs};
 use casper_trade_contracts::sample_tokens::{SampleToken, SampleTokenInitArgs};
 use odra::casper_types::U256;

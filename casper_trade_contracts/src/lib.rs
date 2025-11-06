@@ -3,8 +3,8 @@
 extern crate alloc;
 
 pub mod callee;
-pub mod pair;
 pub mod factory;
+pub mod pair;
 pub mod router;
 pub mod sample_tokens;
 pub mod utils;

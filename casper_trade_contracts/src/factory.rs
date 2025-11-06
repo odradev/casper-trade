@@ -1,7 +1,7 @@
 use crate::factory::errors::FactoryError;
+use crate::pair::{PairContractRef, PairFactoryContractRef};
 use odra::prelude::*;
 use odra::ContractRef;
-use crate::pair::{PairContractRef, PairFactoryContractRef};
 
 #[odra::event]
 pub struct PairCreated {
@@ -27,10 +27,12 @@ impl Factory {
         self.pair_factory.set(pair_factory);
     }
 
+    /// Returns the `fee_to`
     pub fn fee_to(&self) -> Option<Address> {
         self.fee_to.get().unwrap_or_revert(self)
     }
 
+    /// Sets `fee_to`
     pub fn set_fee_to(&mut self, fee_to: Option<Address>) {
         self.fee_to.set(fee_to);
     }
