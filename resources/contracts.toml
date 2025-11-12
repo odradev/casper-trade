@@ -1,41 +1,41 @@
-last_updated = "2025-10-21T15:24:49Z"
+last_updated = "2025-11-12T09:43:39Z"
 
 [[contracts]]
 name = "Factory"
 package_name = "Factory"
-package_hash = "hash-8ee2dacede0e7e4ac98a27b6b2e805e7e8bf883cd811f13f2aefcd255a49823a"
+package_hash = "hash-6b11561b04679dc7d252cafbe51daacafe70ffa4b3fdfe7a272bb031f789c6d4"
 
 [[contracts]]
 name = "SampleToken"
 package_name = "SampleTokenA"
-package_hash = "hash-af6f77a81da7bf9da26f1c204232b3deb0f8f1cf57bcdfe320386f33851a129d"
+package_hash = "hash-8fb186c67344ea7b849f7dc9ac0921da801af656cbdd474955f5519f2e35fe2f"
 
 [[contracts]]
 name = "SampleToken"
 package_name = "SampleTokenB"
-package_hash = "hash-03471901de2f0acad01200ed1f9e7ac81243c02869946d8157644e3d408d3d9b"
+package_hash = "hash-2bd38ba9f8f71aea3d46d22fe7cc1ea13f591b66ccc0a38837e88bf0822bf520"
 
 [[contracts]]
 name = "WrappedNativeToken"
 package_name = "WrappedNativeToken"
-package_hash = "hash-a5d11235ae27d9b6c8e0151729ae5e20be9a07b9b044c3a9e5f4cd8570a337d6"
+package_hash = "hash-ed151da791a8eb07d562fbac9fa68a29fd3a16d959ff760beb2b8ea1d2cc8763"
 
 [[contracts]]
-name = "CasperswapV2Router"
-package_name = "CasperswapV2Router"
-package_hash = "hash-b8472d033e0caf2201cfffaeaed429160d3aa4a30962dc3931b4ad0b1c13c8b9"
+name = "Router"
+package_name = "Router"
+package_hash = "hash-c18f1c713babf48b12b8d1ac6ae88ae164a5e8d78ddfeabaac469fd12fe1dac5"
 
 [[contracts]]
-name = "CasperswapV2Pair"
+name = "Pair"
 package_name = "TokenA_TokenB"
-package_hash = "hash-d610e14707821f5fbcb54e1355b372c7cc759f99a2ccd1ef74e2e42cecd21d61"
+package_hash = "hash-b10a364fe47ee673207a4cf1176779235a42fb9bea7ef7a0494b6282005f5fae"
 
 [[contracts]]
-name = "CasperswapV2Pair"
+name = "Pair"
 package_name = "TokenA_WCSPR"
-package_hash = "hash-68ac2eb49aa9fac6ea46ab7dae26c1e05a9b2d4a20c95ed7e982c777f1be65c3"
+package_hash = "hash-150e00f2e2cbb0278ebc5b1c7fe3e3d9dd42ccca4ded79a5d43f7ce265aa6098"
 
 [[contracts]]
-name = "CasperswapV2Pair"
+name = "Pair"
 package_name = "TokenB_WCSPR"
-package_hash = "hash-0960f8321dd2a4458a26cbca2ec70db2584cab7217e8f06576bb9b1f558d1433"
+package_hash = "hash-d925321b012dd53b652ffffaa89c84cef757cafd343c28733c18d042ab548c1e"
