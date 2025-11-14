@@ -46,7 +46,7 @@ impl Scenario for AddLiquidity {
     fn run(
         &self,
         env: &HostEnv,
-        container: &DeployedContractsContainer,
+        container: &mut DeployedContractsContainer,
         args: Args,
     ) -> Result<(), Error> {
         env.set_gas(50_000_000_000);
