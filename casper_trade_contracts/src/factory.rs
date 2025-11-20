@@ -2,6 +2,7 @@ use crate::factory::errors::FactoryError;
 use crate::pair::{PairContractRef, PairFactoryContractRef};
 use odra::prelude::*;
 use odra::ContractRef;
+use odra_modules::access::{AccessControl, DEFAULT_ADMIN_ROLE};
 
 #[odra::event]
 pub struct PairCreated {
@@ -15,6 +16,7 @@ pub struct Factory {
     fee_to: Var<Option<Address>>,
     pairs: Mapping<(Address, Address), Address>,
     pair_factory: Var<Address>,
+    access_control: SubModule<AccessControl>,
 }
 
 #[odra::module]
@@ -23,8 +25,25 @@ impl Factory {
     ///
     /// If fee to is None, the factory will not charge any fees.
     pub fn init(&mut self, fee_to: Option<Address>, pair_factory: Address) {
+        let caller = self.env().caller();
         self.fee_to.set(fee_to);
         self.pair_factory.set(pair_factory);
+        self.access_control.unchecked_grant_role(&DEFAULT_ADMIN_ROLE, &caller);
+    }
+
+    /// Grants admin role to an address.
+    pub fn register_admin(&mut self, admin: Address) {
+        self.access_control.grant_role(&DEFAULT_ADMIN_ROLE, &admin);
+    }
+
+    /// Revokes admin role from an address.
+    pub fn unregister_admin(&mut self, admin: Address) {
+        self.access_control.revoke_role(&DEFAULT_ADMIN_ROLE, &admin);
+    }
+
+    /// Checks if an address has admin role.
+    pub fn is_admin(&self, address: Address) -> bool {
+        self.access_control.has_role(&DEFAULT_ADMIN_ROLE, &address)
     }
 
     /// Returns the `fee_to`
@@ -34,6 +53,7 @@ impl Factory {
 
     /// Sets `fee_to`
     pub fn set_fee_to(&mut self, fee_to: Option<Address>) {
+        self.assert_admin();
         self.fee_to.set(fee_to);
     }
 
@@ -81,6 +101,16 @@ impl Factory {
             (token_b, token_a)
         }
     }
+    
+}
+
+impl Factory {
+    fn assert_admin(&self) {
+        if !self.is_admin(self.env().caller()) {
+            self.env().revert(FactoryError::PermissionDenied);
+        }
+    }
+
 }
 
 pub mod errors {
@@ -90,5 +120,55 @@ pub mod errors {
     pub enum FactoryError {
         CreatingAPairWithoutMockingIt = 1,
         Misconfigured = 2,
+        PermissionDenied = 3,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::pair::PairFactory;
+    use odra::host::{Deployer, NoArgs};
+
+    #[test]
+    fn test_admin_add_and_remove() {
+        // Arrange: deploy Factory
+        let env = odra_test::env();
+        let deployer = env.get_account(0);
+        let new_admin = env.get_account(1);
+        let non_admin = env.get_account(2);
+
+        let pair_factory = PairFactory::deploy(&env, NoArgs);
+        let mut factory = Factory::deploy(
+            &env,
+            FactoryInitArgs {
+                fee_to: None,
+                pair_factory: pair_factory.address(),
+            },
+        );
+
+        // Assert: deployer is automatically an admin after init
+        assert!(factory.is_admin(deployer));
+
+        // Assert: new_admin is not an admin initially
+        assert!(!factory.is_admin(new_admin));
+
+        // Act: deployer adds new_admin as admin
+        env.set_caller(deployer);
+        factory.register_admin(new_admin);
+
+        // Assert: new_admin is now an admin
+        assert!(factory.is_admin(new_admin));
+        assert!(factory.is_admin(deployer)); // deployer is still admin
+
+        // Act: deployer removes new_admin from admins
+        factory.unregister_admin(new_admin);
+
+        // Assert: new_admin is no longer an admin
+        assert!(!factory.is_admin(new_admin));
+        assert!(factory.is_admin(deployer)); // deployer is still admin
+
+        // Assert: non_admin was never an admin
+        assert!(!factory.is_admin(non_admin));
     }
 }
