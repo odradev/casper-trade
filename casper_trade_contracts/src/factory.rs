@@ -1,5 +1,7 @@
 use crate::factory::errors::FactoryError;
 use crate::pair::{PairContractRef, PairFactoryContractRef};
+use crate::router::errors::LibraryError::{IdenticalAddresses, ZeroAddress};
+use crate::utils::zero_address;
 use odra::prelude::*;
 use odra::ContractRef;
 use odra_modules::access::{AccessControl, DEFAULT_ADMIN_ROLE};
@@ -60,7 +62,17 @@ impl Factory {
 
     /// Creates a pair for the given tokens. If it exists, it will return existing one.
     pub fn create_pair(&mut self, token_a: Address, token_b: Address) -> Address {
+        if token_a == token_b {
+            self.revert(IdenticalAddresses)
+        }
+
+        let zero_address = zero_address();
+
         let (token0, token1) = self.sort_tokens(token_a, token_b);
+        if token0 == zero_address {
+            self.revert(ZeroAddress)
+        }
+
         match self.pairs.get(&(token0, token1)) {
             None => {
                 let mut contract_factory = PairFactoryContractRef::new(
