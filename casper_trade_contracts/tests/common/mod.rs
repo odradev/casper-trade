@@ -111,14 +111,16 @@ pub fn setup() -> TestContext {
     }
 }
 
-pub fn add_liquidity(context: &mut TestContext, token0_amount: U256, token1_amount: U256) {
-    context.env.set_caller(context.owner);
-    let pair_address = context.pair.address();
-    let mut pair_instance = PairHostRef::new(pair_address, context.env.clone());
-    let mut token0_instance = Cep18HostRef::new(pair_instance.token0(), context.env.clone());
-    let mut token1_instance = Cep18HostRef::new(pair_instance.token1(), context.env.clone());
-    token0_instance.transfer(&pair_instance.address(), &token0_amount);
-    token1_instance.transfer(&pair_instance.address(), &token1_amount);
+impl TestContext {
+    pub fn add_liquidity(&mut self, token0_amount: U256, token1_amount: U256) -> OdraResult<U256> {
+        self.env.set_caller(self.owner);
+        let pair_address = self.pair.address();
+        let mut pair_instance = PairHostRef::new(pair_address, self.env.clone());
+        let mut token0_instance = Cep18HostRef::new(pair_instance.token0(), self.env.clone());
+        let mut token1_instance = Cep18HostRef::new(pair_instance.token1(), self.env.clone());
+        token0_instance.transfer(&pair_instance.address(), &token0_amount);
+        token1_instance.transfer(&pair_instance.address(), &token1_amount);
 
-    pair_instance.mint(context.owner);
+        pair_instance.try_mint(self.owner)
+    }
 }

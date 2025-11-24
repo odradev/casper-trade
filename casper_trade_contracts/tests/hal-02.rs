@@ -1,7 +1,7 @@
 mod common;
 
 use casper_trade_contracts::utils::expand_to_18_decimals;
-use common::{add_liquidity, setup};
+use common::setup;
 use odra::casper_types::U256;
 use odra::prelude::*;
 
@@ -12,11 +12,7 @@ fn test_add_liquidity_input_order_bug_poc() {
     // Seed pair with asymmetric reserves reserve0=1, reserve1=4 (token0:token1)
     let mut context = setup();
 
-    add_liquidity(
-        &mut context,
-        expand_to_18_decimals(1),
-        expand_to_18_decimals(4),
-    );
+    let _ = context.add_liquidity(expand_to_18_decimals(1), expand_to_18_decimals(4));
 
     // Approvals
     context

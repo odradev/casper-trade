@@ -115,7 +115,10 @@ impl Pair {
         let liquidity = if total_supply.is_zero() {
             // permanently lock the first MINIMUM_LIQUIDITY tokens
             self.token.raw_mint(&zero_address, &minimum_liquidity);
-            (amount0 * amount1).integer_sqrt() - minimum_liquidity
+            (amount0 * amount1)
+                .integer_sqrt()
+                .checked_sub(minimum_liquidity)
+                .unwrap_or_revert_with(&self.env(), PairError::InsufficientLiquidityMinted)
         } else {
             (amount0 * total_supply / reserve0).min(amount1 * total_supply / reserve1)
         };
