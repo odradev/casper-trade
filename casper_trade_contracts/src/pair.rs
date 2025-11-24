@@ -26,7 +26,9 @@ pub struct Pair {
     pub token: SubModule<Cep18>,
     pub factory: Var<Address>,
     pub token0: Var<Address>,
+    pub token0_decimals: Var<u8>,
     pub token1: Var<Address>,
+    pub token1_decimals: Var<u8>,
     pub reserve0: Var<U256>,
     pub reserve1: Var<U256>,
     pub k_last: Var<U256>,
@@ -74,6 +76,13 @@ impl Pair {
         }
         self.token0.set(token0);
         self.token1.set(token1);
+
+        let token0_instance = Cep18ContractRef::new(self.env(), token0);
+
+        let token1_instance = Cep18ContractRef::new(self.env(), token0);
+
+        self.token0_decimals.set(token0_instance.decimals());
+        self.token1_decimals.set(token1_instance.decimals());
     }
 
     #[odra(non_reentrant)]
@@ -350,6 +359,15 @@ impl Pair {
 
     pub fn token1(&self) -> Address {
         self.token1.get_or_revert_with(PairError::NotInitialized)
+    }
+
+    pub fn get_tokens_decimals(&self) -> (u8, u8) {
+        (
+            self.token0_decimals
+                .get_or_revert_with(PairError::NotInitialized),
+            self.token0_decimals
+                .get_or_revert_with(PairError::NotInitialized),
+        )
     }
 
     // Take a closer look during code review to confirm the soundness of this function

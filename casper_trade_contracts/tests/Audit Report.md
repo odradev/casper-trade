@@ -8,3 +8,6 @@ The fix has been implemented, and the corresponding test is located in `hal-02.r
 
 ## HAL-03
 The fix has been implemented, and the corresponding test is located in `hal-03.rs`.
+
+## HAL-04
+The suggested improvement has been implemented, and the corresponding test is located in `hal-04.rs`.
