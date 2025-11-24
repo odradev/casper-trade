@@ -82,7 +82,7 @@ impl Factory {
                 );
                 let pair = contract_factory
                     .factory(
-                        token_a.to_string() + &token_b.to_string(),
+                        token0.to_string() + &token1.to_string(),
                         self.env().self_address(),
                     )
                     .0;
