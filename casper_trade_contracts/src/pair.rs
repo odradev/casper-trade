@@ -24,6 +24,8 @@ pub const MINIMUM_LIQUIDITY: u64 = 1000;
 #[odra::module(factory=on, events = [PairMint, PairBurn, PairSwap, PairSync], errors = PairError)]
 pub struct Pair {
     pub token: SubModule<Cep18>,
+    pub symbol: Var<String>,
+    pub name: Var<String>,
     pub factory: Var<Address>,
     pub token0: Var<Address>,
     pub token0_decimals: Var<u8>,
@@ -78,11 +80,18 @@ impl Pair {
         self.token1.set(token1);
 
         let token0_instance = Cep18ContractRef::new(self.env(), token0);
+        let token1_instance = Cep18ContractRef::new(self.env(), token1);
 
-        let token1_instance = Cep18ContractRef::new(self.env(), token0);
+        let token0_symbol = token0_instance.symbol();
+        let token1_symbol = token1_instance.symbol();
 
         self.token0_decimals.set(token0_instance.decimals());
         self.token1_decimals.set(token1_instance.decimals());
+
+        self.name
+            .set("CasperTradeV2-".to_string() + &token0_symbol + "-" + &token1_symbol);
+        self.symbol
+            .set("CT-LP-".to_string() + &token0_symbol + "-" + &token1_symbol);
     }
 
     #[odra(non_reentrant)]
@@ -368,6 +377,14 @@ impl Pair {
             self.token0_decimals
                 .get_or_revert_with(PairError::NotInitialized),
         )
+    }
+
+    pub fn name(&self) -> String {
+        self.name.get_or_revert_with(PairError::NotInitialized)
+    }
+
+    pub fn symbol(&self) -> String {
+        self.symbol.get_or_revert_with(PairError::NotInitialized)
     }
 
     // Take a closer look during code review to confirm the soundness of this function
