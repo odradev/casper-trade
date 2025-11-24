@@ -28,7 +28,8 @@ impl Factory {
         let caller = self.env().caller();
         self.fee_to.set(fee_to);
         self.pair_factory.set(pair_factory);
-        self.access_control.unchecked_grant_role(&DEFAULT_ADMIN_ROLE, &caller);
+        self.access_control
+            .unchecked_grant_role(&DEFAULT_ADMIN_ROLE, &caller);
     }
 
     /// Grants admin role to an address.
@@ -101,7 +102,6 @@ impl Factory {
             (token_b, token_a)
         }
     }
-    
 }
 
 impl Factory {
@@ -110,7 +110,6 @@ impl Factory {
             self.env().revert(FactoryError::PermissionDenied);
         }
     }
-
 }
 
 pub mod errors {

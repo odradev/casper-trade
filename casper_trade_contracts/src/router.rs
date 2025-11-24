@@ -70,7 +70,7 @@ impl Router {
         let pair = self.factory_instance().get_pair(token_a, token_b);
         let pair = pair.unwrap_or_else(|| self.factory_instance().create_pair(token_a, token_b));
         let pair_instance = PairContractRef::new(self.env(), pair);
-        let (reserve_a, reserve_b, _) = pair_instance.get_reserves();
+        let (reserve_a, reserve_b, _) = self.get_reserves(token_a, token_b);
         if reserve_a.is_zero() && reserve_b.is_zero() {
             (amount_a_desired, amount_b_desired, pair_instance)
         } else {
