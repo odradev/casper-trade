@@ -11,3 +11,6 @@ The fix has been implemented, and the corresponding test is located in `hal-03.r
 
 ## HAL-04
 The suggested improvement has been implemented, and the corresponding test is located in `hal-04.rs`.
+
+## HAL-05
+The suggested improvement has been implemented, and the corresponding test is located in `hal-04.rs`.

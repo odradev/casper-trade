@@ -72,7 +72,7 @@ impl Pair {
             .unwrap_or_revert_with(&self.env(), PairError::Misconfigured);
         let caller = self.env().caller();
         if factory != caller {
-            self.env().revert(PairError::Overflow);
+            self.env().revert(PairError::Forbidden);
         }
         self.token0.set(token0);
         self.token1.set(token1);
