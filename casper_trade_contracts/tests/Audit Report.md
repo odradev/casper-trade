@@ -23,3 +23,6 @@ The suggested improvement has been implemented, and the corresponding test is lo
 
 ## HAL-08
 The suggested improvement has been implemented.
+
+## HAL-09
+The suggested improvement has been implemented, and the corresponding test is located in `hal-09.rs`.

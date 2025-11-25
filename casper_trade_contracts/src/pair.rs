@@ -5,6 +5,7 @@ use odra::{
 };
 use odra_modules::cep18_token::{Cep18, Cep18ContractRef};
 
+use crate::pair::events::{PairInitialized, ProtocolFeeMinted, SkimExcess};
 use crate::{
     callee::CasperTradeCalleeContractRef,
     factory::FactoryContractRef,
@@ -21,7 +22,7 @@ pub mod events;
 pub const MINIMUM_LIQUIDITY: u64 = 1000;
 
 /// Pair contract - implementation based on Uniswap V2
-#[odra::module(factory=on, events = [PairMint, PairBurn, PairSwap, PairSync], errors = PairError)]
+#[odra::module(factory=on, events = [PairMint, PairBurn, PairSwap, PairSync, PairInitialized, SkimExcess, ProtocolFeeMinted], errors = PairError)]
 pub struct Pair {
     pub token: SubModule<Cep18>,
     pub symbol: Var<String>,
@@ -92,6 +93,7 @@ impl Pair {
             .set("CasperTradeV2-".to_string() + &token0_symbol + "-" + &token1_symbol);
         self.symbol
             .set("CT-LP-".to_string() + &token0_symbol + "-" + &token1_symbol);
+        self.env().emit_event(PairInitialized { token0, token1 })
     }
 
     #[odra(non_reentrant)]
@@ -343,12 +345,20 @@ impl Pair {
             .balance_of(&self.env().self_address());
 
         // Transfer any excess balance (balance - reserve) to the recipient
-        if balance0 > reserve0 {
+        let amount0 = balance0 - reserve0;
+        if amount0 > U256::zero() {
             self.token0_instance().transfer(&to, &(balance0 - reserve0));
         }
-        if balance1 > reserve1 {
-            self.token1_instance().transfer(&to, &(balance1 - reserve1));
+        let amount1 = balance1 - reserve1;
+        if amount1 > U256::zero() {
+            self.token1_instance().transfer(&to, &amount1);
         }
+
+        self.env().emit_event(SkimExcess {
+            to,
+            amount0,
+            amount1,
+        });
     }
 
     /// Force reserves to match balances
@@ -450,7 +460,12 @@ impl Pair {
                     let denominator = root_k * 5 + root_k_last;
                     let liquidity = numerator / denominator;
                     if liquidity > U256::zero() {
-                        self.token.raw_mint(&fee_to.unwrap(), &liquidity);
+                        let fee_to = fee_to.unwrap();
+                        self.token.raw_mint(&fee_to, &liquidity);
+                        self.env().emit_event(ProtocolFeeMinted {
+                            to: fee_to,
+                            liquidity,
+                        })
                     }
                 }
             }

@@ -1,4 +1,5 @@
 use crate::factory::errors::FactoryError;
+use crate::pair::events::{FactoryInitialized, FeeToUpdated};
 use crate::pair::{PairContractRef, PairFactoryContractRef};
 use crate::router::errors::LibraryError::{IdenticalAddresses, ZeroAddress};
 use crate::utils::zero_address;
@@ -13,7 +14,7 @@ pub struct PairCreated {
     pub pair: Address,
 }
 
-#[odra::module(events = [PairCreated], errors = FactoryError)]
+#[odra::module(events = [PairCreated, FeeToUpdated, FactoryInitialized], errors = FactoryError)]
 pub struct Factory {
     fee_to: Var<Option<Address>>,
     pairs: Mapping<(Address, Address), Address>,
@@ -32,6 +33,11 @@ impl Factory {
         self.pair_factory.set(pair_factory);
         self.access_control
             .unchecked_grant_role(&DEFAULT_ADMIN_ROLE, &caller);
+
+        self.env().emit_event(FactoryInitialized {
+            fee_to,
+            pair_factory,
+        });
     }
 
     /// Grants admin role to an address.
@@ -57,7 +63,13 @@ impl Factory {
     /// Sets `fee_to`
     pub fn set_fee_to(&mut self, fee_to: Option<Address>) {
         self.assert_admin();
+        let old_fee_to = self.fee_to.get().unwrap_or_default();
         self.fee_to.set(fee_to);
+
+        self.env().emit_event(FeeToUpdated {
+            old: old_fee_to,
+            new: fee_to,
+        })
     }
 
     /// Creates a pair for the given tokens. If it exists, it will return existing one.
@@ -81,7 +93,7 @@ impl Factory {
                         .get_or_revert_with(FactoryError::Misconfigured),
                 );
                 let pair = contract_factory
-                    .factory(
+                    .new_contract(
                         token0.to_string() + &token1.to_string(),
                         self.env().self_address(),
                     )

@@ -4,7 +4,7 @@
 //! that can be shared across multiple integration test files.
 
 use casper_trade_contracts::factory::{Factory, FactoryHostRef, FactoryInitArgs};
-use casper_trade_contracts::pair::{PairFactory, PairHostRef};
+use casper_trade_contracts::pair::{PairFactory, PairFactoryHostRef, PairHostRef};
 use casper_trade_contracts::router::{Router, RouterHostRef, RouterInitArgs};
 use casper_trade_contracts::sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs};
 use casper_trade_contracts::utils::expand_to_18_decimals;
@@ -14,26 +14,25 @@ use odra::prelude::*;
 use odra_modules::cep18_token::Cep18HostRef;
 use odra_modules::wrapped_native::{WrappedNativeToken, WrappedNativeTokenHostRef};
 
+#[allow(dead_code)]
 pub struct TestContext {
     pub env: HostEnv,
     pub factory: FactoryHostRef,
+    pub pair_factory: PairFactoryHostRef,
     pub router: RouterHostRef,
     pub token0: SampleTokenHostRef,
     pub token1: SampleTokenHostRef,
     pub wcspr: WrappedNativeTokenHostRef,
     pub wcspr_partner: SampleTokenHostRef,
     pub pair: PairHostRef,
-    pub wcspr_pair: PairHostRef,
     pub owner: Address,
     pub alice: Address,
-    pub bob: Address,
 }
 
 pub fn setup() -> TestContext {
     let env = odra_test::env();
     let owner = env.get_account(0);
     let alice = env.get_account(1);
-    let bob = env.get_account(2);
     let pair_factory = PairFactory::deploy(&env, NoArgs);
 
     // Deploy the actual Factory contract
@@ -92,26 +91,24 @@ pub fn setup() -> TestContext {
     // Create pairs via factory
     let pair_address = factory.create_pair(token0.address(), token1.address());
     let pair = PairHostRef::new(pair_address, env.clone());
-    let wcspr_pair_address = factory.create_pair(wcspr.address(), wcspr_partner.address());
-    let wcspr_pair = PairHostRef::new(wcspr_pair_address, env.clone());
 
     TestContext {
         env,
         factory,
+        pair_factory,
         router,
         token0,
         token1,
         wcspr,
         wcspr_partner,
         pair,
-        wcspr_pair,
         owner,
         alice,
-        bob,
     }
 }
 
 impl TestContext {
+    #[allow(dead_code)]
     pub fn add_liquidity(&mut self, token0_amount: U256, token1_amount: U256) -> OdraResult<U256> {
         self.env.set_caller(self.owner);
         let pair_address = self.pair.address();
