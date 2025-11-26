@@ -6,8 +6,73 @@
   "homepage": null,
   "contract_name": "Router",
   "contract_version": "0.1.0",
-  "types": [],
-  "errors": [],
+  "types": [
+    {
+      "struct": {
+        "name": "CSPRRefunded",
+        "description": null,
+        "members": [
+          {
+            "name": "to",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "amount",
+            "description": null,
+            "ty": "U512"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "name": "ExcessiveInputAmount",
+      "description": "",
+      "discriminant": 21005
+    },
+    {
+      "name": "Expired",
+      "description": "",
+      "discriminant": 21001
+    },
+    {
+      "name": "InsufficientAAmount",
+      "description": "",
+      "discriminant": 21002
+    },
+    {
+      "name": "InsufficientBAmount",
+      "description": "",
+      "discriminant": 21003
+    },
+    {
+      "name": "InsufficientBalance",
+      "description": "",
+      "discriminant": 21008
+    },
+    {
+      "name": "InsufficientOutputAmount",
+      "description": "",
+      "discriminant": 21004
+    },
+    {
+      "name": "InvalidPath",
+      "description": "",
+      "discriminant": 21006
+    },
+    {
+      "name": "Misconfigured",
+      "description": "",
+      "discriminant": 21000
+    },
+    {
+      "name": "PairNotFound",
+      "description": "",
+      "discriminant": 21007
+    }
+  ],
   "entry_points": [
     {
       "name": "factory_address",
@@ -674,7 +739,12 @@
       "access": "public"
     }
   ],
-  "events": [],
+  "events": [
+    {
+      "name": "CSPRRefunded",
+      "ty": "CSPRRefunded"
+    }
+  ],
   "call": {
     "wasm_file_name": "Router.wasm",
     "description": "Initializes the router with the factory address",

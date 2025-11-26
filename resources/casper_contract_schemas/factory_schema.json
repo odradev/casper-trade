@@ -9,6 +9,48 @@
   "types": [
     {
       "struct": {
+        "name": "FactoryInitialized",
+        "description": null,
+        "members": [
+          {
+            "name": "fee_to",
+            "description": null,
+            "ty": {
+              "Option": "Key"
+            }
+          },
+          {
+            "name": "pair_factory",
+            "description": null,
+            "ty": "Key"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "FeeToUpdated",
+        "description": null,
+        "members": [
+          {
+            "name": "old",
+            "description": null,
+            "ty": {
+              "Option": "Key"
+            }
+          },
+          {
+            "name": "new",
+            "description": null,
+            "ty": {
+              "Option": "Key"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
         "name": "PairCreated",
         "description": null,
         "members": [
@@ -29,9 +71,98 @@
           }
         ]
       }
+    },
+    {
+      "struct": {
+        "name": "RoleAdminChanged",
+        "description": null,
+        "members": [
+          {
+            "name": "role",
+            "description": null,
+            "ty": {
+              "ByteArray": 32
+            }
+          },
+          {
+            "name": "previous_admin_role",
+            "description": null,
+            "ty": {
+              "ByteArray": 32
+            }
+          },
+          {
+            "name": "new_admin_role",
+            "description": null,
+            "ty": {
+              "ByteArray": 32
+            }
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "RoleGranted",
+        "description": null,
+        "members": [
+          {
+            "name": "role",
+            "description": null,
+            "ty": {
+              "ByteArray": 32
+            }
+          },
+          {
+            "name": "address",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "sender",
+            "description": null,
+            "ty": "Key"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "RoleRevoked",
+        "description": null,
+        "members": [
+          {
+            "name": "role",
+            "description": null,
+            "ty": {
+              "ByteArray": 32
+            }
+          },
+          {
+            "name": "address",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "sender",
+            "description": null,
+            "ty": "Key"
+          }
+        ]
+      }
     }
   ],
   "errors": [
+    {
+      "name": "CallerNotTheNewOwner",
+      "description": "The caller is not the new owner.",
+      "discriminant": 20002
+    },
+    {
+      "name": "CallerNotTheOwner",
+      "description": "The caller is not the owner.",
+      "discriminant": 20001
+    },
     {
       "name": "CreatingAPairWithoutMockingIt",
       "description": "",
@@ -41,9 +172,77 @@
       "name": "Misconfigured",
       "description": "",
       "discriminant": 2
+    },
+    {
+      "name": "MissingRole",
+      "description": "The role is missing.",
+      "discriminant": 20003
+    },
+    {
+      "name": "OwnerNotSet",
+      "description": "The owner is not set.",
+      "discriminant": 20000
+    },
+    {
+      "name": "PermissionDenied",
+      "description": "",
+      "discriminant": 3
+    },
+    {
+      "name": "RoleRenounceForAnotherAddress",
+      "description": "The role cannot be renounced for another address.",
+      "discriminant": 20004
     }
   ],
   "entry_points": [
+    {
+      "name": "register_admin",
+      "description": "Grants admin role to an address.",
+      "is_mutable": true,
+      "arguments": [
+        {
+          "name": "admin",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "unregister_admin",
+      "description": "Revokes admin role from an address.",
+      "is_mutable": true,
+      "arguments": [
+        {
+          "name": "admin",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "is_admin",
+      "description": "Checks if an address has admin role.",
+      "is_mutable": false,
+      "arguments": [
+        {
+          "name": "address",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "Bool",
+      "is_contract_context": true,
+      "access": "public"
+    },
     {
       "name": "fee_to",
       "description": "Returns the `fee_to`",
@@ -122,8 +321,28 @@
   ],
   "events": [
     {
+      "name": "FactoryInitialized",
+      "ty": "FactoryInitialized"
+    },
+    {
+      "name": "FeeToUpdated",
+      "ty": "FeeToUpdated"
+    },
+    {
       "name": "PairCreated",
       "ty": "PairCreated"
+    },
+    {
+      "name": "RoleAdminChanged",
+      "ty": "RoleAdminChanged"
+    },
+    {
+      "name": "RoleGranted",
+      "ty": "RoleGranted"
+    },
+    {
+      "name": "RoleRevoked",
+      "ty": "RoleRevoked"
     }
   ],
   "call": {

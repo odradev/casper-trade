@@ -29,7 +29,7 @@
   "errors": [],
   "entry_points": [
     {
-      "name": "factory",
+      "name": "new_contract",
       "description": "",
       "is_mutable": true,
       "arguments": [
@@ -52,6 +52,40 @@
           "URef"
         ]
       },
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "upgrade_child_contract",
+      "description": "",
+      "is_mutable": true,
+      "arguments": [
+        {
+          "name": "contract_name",
+          "description": null,
+          "ty": "String",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "batch_upgrade_child_contract",
+      "description": "",
+      "is_mutable": true,
+      "arguments": [
+        {
+          "name": "args",
+          "description": null,
+          "ty": {
+            "List": "U8"
+          },
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
       "is_contract_context": true,
       "access": "public"
     }

@@ -45,8 +45,6 @@ fn test_missing_events_on_critical_state_changes() {
             token1: context.token1.address(),
         }
     ));
-
-    // CSPRRefunded
 }
 
 #[test]
