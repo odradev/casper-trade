@@ -387,7 +387,7 @@ impl Pair {
         (
             self.token0_decimals
                 .get_or_revert_with(PairError::NotInitialized),
-            self.token0_decimals
+            self.token1_decimals
                 .get_or_revert_with(PairError::NotInitialized),
         )
     }
