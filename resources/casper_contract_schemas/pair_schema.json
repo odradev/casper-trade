@@ -129,6 +129,24 @@
     },
     {
       "struct": {
+        "name": "PairInitialized",
+        "description": null,
+        "members": [
+          {
+            "name": "token0",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "token1",
+            "description": null,
+            "ty": "Key"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
         "name": "PairMint",
         "description": null,
         "members": [
@@ -208,6 +226,24 @@
     },
     {
       "struct": {
+        "name": "ProtocolFeeMinted",
+        "description": null,
+        "members": [
+          {
+            "name": "to",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "liquidity",
+            "description": null,
+            "ty": "U256"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
         "name": "SetAllowance",
         "description": null,
         "members": [
@@ -223,6 +259,29 @@
           },
           {
             "name": "allowance",
+            "description": null,
+            "ty": "U256"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "SkimExcess",
+        "description": null,
+        "members": [
+          {
+            "name": "to",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "amount0",
+            "description": null,
+            "ty": "U256"
+          },
+          {
+            "name": "amount1",
             "description": null,
             "ty": "U256"
           }
@@ -555,6 +614,38 @@
       "access": "public"
     },
     {
+      "name": "get_tokens_decimals",
+      "description": "",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": {
+        "Tuple2": [
+          "U8",
+          "U8"
+        ]
+      },
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "name",
+      "description": "",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "String",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "symbol",
+      "description": "",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "String",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
       "name": "total_supply",
       "description": "Delegated. See `self.token.total_supply()` for details.",
       "is_mutable": false,
@@ -696,6 +787,10 @@
       "ty": "PairBurn"
     },
     {
+      "name": "PairInitialized",
+      "ty": "PairInitialized"
+    },
+    {
       "name": "PairMint",
       "ty": "PairMint"
     },
@@ -708,8 +803,16 @@
       "ty": "PairSync"
     },
     {
+      "name": "ProtocolFeeMinted",
+      "ty": "ProtocolFeeMinted"
+    },
+    {
       "name": "SetAllowance",
       "ty": "SetAllowance"
+    },
+    {
+      "name": "SkimExcess",
+      "ty": "SkimExcess"
     },
     {
       "name": "Transfer",

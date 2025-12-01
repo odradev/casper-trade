@@ -10,6 +10,7 @@ use odra::{
 use odra_modules::cep18_token::Cep18ContractRef;
 use odra_modules::wrapped_native::WrappedNativeTokenContractRef;
 
+use crate::pair::events::CSPRRefunded;
 use crate::pair::PairContractRef;
 use crate::{
     factory::FactoryContractRef,
@@ -18,7 +19,7 @@ use crate::{
 
 /// Router - Router contract for Casper Trade V2
 /// Based on UniswapV2Router02
-#[odra::module]
+#[odra::module(events = [CSPRRefunded], errors = RouterError)]
 pub struct Router {
     factory: Var<Address>,
     wcspr: Var<Address>,
@@ -70,7 +71,7 @@ impl Router {
         let pair = self.factory_instance().get_pair(token_a, token_b);
         let pair = pair.unwrap_or_else(|| self.factory_instance().create_pair(token_a, token_b));
         let pair_instance = PairContractRef::new(self.env(), pair);
-        let (reserve_a, reserve_b, _) = pair_instance.get_reserves();
+        let (reserve_a, reserve_b, _) = self.get_reserves(token_a, token_b);
         if reserve_a.is_zero() && reserve_b.is_zero() {
             (amount_a_desired, amount_b_desired, pair_instance)
         } else {
@@ -169,10 +170,10 @@ impl Router {
         // Refund excess CSPR if any
         let excess_cspr = cspr_amount - amount_cspr;
         if excess_cspr > U256::from(0) {
-            self.env().transfer_tokens(
-                &self.env().caller(),
-                &odra::uints::ToU512::to_u512(excess_cspr),
-            );
+            let amount = ToU512::to_u512(excess_cspr);
+            self.env().transfer_tokens(&self.env().caller(), &amount);
+
+            self.env().emit_event(CSPRRefunded { to, amount });
         }
 
         (amount_token, amount_cspr, liquidity)
@@ -518,8 +519,10 @@ impl Router {
         // Refund excess CSPR if any
         let excess_cspr = cspr_amount - amounts[0];
         if excess_cspr > U256::zero() {
-            self.env()
-                .transfer_tokens(&self.env().caller(), &excess_cspr.to_u512());
+            let amount = excess_cspr.to_u512();
+            self.env().transfer_tokens(&self.env().caller(), &amount);
+
+            self.env().emit_event(CSPRRefunded { to, amount });
         }
 
         amounts
@@ -642,7 +645,7 @@ impl Router {
         // In Uniswap V2, the pair address is calculated, but in Casper we get the address during the deployment
         self.factory_instance()
             .get_pair(token_a, token_b)
-            .unwrap_or_revert_with(&self.env(), errors::RouterError::PairNotFound)
+            .unwrap_or_revert_with(&self.env(), RouterError::PairNotFound)
     }
 }
 

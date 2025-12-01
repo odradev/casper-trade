@@ -5,6 +5,7 @@ use odra::{
 };
 use odra_modules::cep18_token::{Cep18, Cep18ContractRef};
 
+use crate::pair::events::{PairInitialized, ProtocolFeeMinted, SkimExcess};
 use crate::{
     callee::CasperTradeCalleeContractRef,
     factory::FactoryContractRef,
@@ -21,12 +22,16 @@ pub mod events;
 pub const MINIMUM_LIQUIDITY: u64 = 1000;
 
 /// Pair contract - implementation based on Uniswap V2
-#[odra::module(factory=on, events = [PairMint, PairBurn, PairSwap, PairSync], errors = PairError)]
+#[odra::module(factory=on, events = [PairMint, PairBurn, PairSwap, PairSync, PairInitialized, SkimExcess, ProtocolFeeMinted], errors = PairError)]
 pub struct Pair {
     pub token: SubModule<Cep18>,
+    pub symbol: Var<String>,
+    pub name: Var<String>,
     pub factory: Var<Address>,
     pub token0: Var<Address>,
+    pub token0_decimals: Var<u8>,
     pub token1: Var<Address>,
+    pub token1_decimals: Var<u8>,
     pub reserve0: Var<U256>,
     pub reserve1: Var<U256>,
     pub k_last: Var<U256>,
@@ -70,10 +75,25 @@ impl Pair {
             .unwrap_or_revert_with(&self.env(), PairError::Misconfigured);
         let caller = self.env().caller();
         if factory != caller {
-            self.env().revert(PairError::Overflow);
+            self.env().revert(PairError::Forbidden);
         }
         self.token0.set(token0);
         self.token1.set(token1);
+
+        let token0_instance = Cep18ContractRef::new(self.env(), token0);
+        let token1_instance = Cep18ContractRef::new(self.env(), token1);
+
+        let token0_symbol = token0_instance.symbol();
+        let token1_symbol = token1_instance.symbol();
+
+        self.token0_decimals.set(token0_instance.decimals());
+        self.token1_decimals.set(token1_instance.decimals());
+
+        self.name
+            .set("CasperTradeV2-".to_string() + &token0_symbol + "-" + &token1_symbol);
+        self.symbol
+            .set("CT-LP-".to_string() + &token0_symbol + "-" + &token1_symbol);
+        self.env().emit_event(PairInitialized { token0, token1 })
     }
 
     #[odra(non_reentrant)]
@@ -97,7 +117,10 @@ impl Pair {
         let liquidity = if total_supply.is_zero() {
             // permanently lock the first MINIMUM_LIQUIDITY tokens
             self.token.raw_mint(&zero_address, &minimum_liquidity);
-            (amount0 * amount1).integer_sqrt() - minimum_liquidity
+            (amount0 * amount1)
+                .integer_sqrt()
+                .checked_sub(minimum_liquidity)
+                .unwrap_or_revert_with(&self.env(), PairError::InsufficientLiquidityMinted)
         } else {
             (amount0 * total_supply / reserve0).min(amount1 * total_supply / reserve1)
         };
@@ -322,12 +345,20 @@ impl Pair {
             .balance_of(&self.env().self_address());
 
         // Transfer any excess balance (balance - reserve) to the recipient
-        if balance0 > reserve0 {
+        let amount0 = balance0 - reserve0;
+        if amount0 > U256::zero() {
             self.token0_instance().transfer(&to, &(balance0 - reserve0));
         }
-        if balance1 > reserve1 {
-            self.token1_instance().transfer(&to, &(balance1 - reserve1));
+        let amount1 = balance1 - reserve1;
+        if amount1 > U256::zero() {
+            self.token1_instance().transfer(&to, &amount1);
         }
+
+        self.env().emit_event(SkimExcess {
+            to,
+            amount0,
+            amount1,
+        });
     }
 
     /// Force reserves to match balances
@@ -350,6 +381,23 @@ impl Pair {
 
     pub fn token1(&self) -> Address {
         self.token1.get_or_revert_with(PairError::NotInitialized)
+    }
+
+    pub fn get_tokens_decimals(&self) -> (u8, u8) {
+        (
+            self.token0_decimals
+                .get_or_revert_with(PairError::NotInitialized),
+            self.token1_decimals
+                .get_or_revert_with(PairError::NotInitialized),
+        )
+    }
+
+    pub fn name(&self) -> String {
+        self.name.get_or_revert_with(PairError::NotInitialized)
+    }
+
+    pub fn symbol(&self) -> String {
+        self.symbol.get_or_revert_with(PairError::NotInitialized)
     }
 
     // Take a closer look during code review to confirm the soundness of this function
@@ -412,7 +460,12 @@ impl Pair {
                     let denominator = root_k * 5 + root_k_last;
                     let liquidity = numerator / denominator;
                     if liquidity > U256::zero() {
-                        self.token.raw_mint(&fee_to.unwrap(), &liquidity);
+                        let fee_to = fee_to.unwrap();
+                        self.token.raw_mint(&fee_to, &liquidity);
+                        self.env().emit_event(ProtocolFeeMinted {
+                            to: fee_to,
+                            liquidity,
+                        })
                     }
                 }
             }
