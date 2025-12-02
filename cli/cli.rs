@@ -26,10 +26,19 @@ impl DeployScript for ContractsDeployScript {
         env: &HostEnv,
         container: &mut DeployedContractsContainer,
     ) -> Result<(), odra_cli::deploy::Error> {
-        env.set_gas(1_000_000_000_000);
+        let balance_before = env.balance_of(&env.caller());
+        env.set_gas(800_000_000_000);
 
-        let pair_factory = PairFactory::deploy(env, NoArgs);
+        let pair_factory = PairFactory::load_or_deploy_with_cfg(
+            env,
+            None,
+            NoArgs,
+        InstallConfig::upgradable::<PairFactory>(),
+            container,
+            cspr!(800),
+        )?;
 
+        env.set_gas(300_000_000_000);
         // Deploy Factory contract
         let mut factory = Factory::load_or_deploy_with_cfg(
             env,
@@ -40,7 +49,7 @@ impl DeployScript for ContractsDeployScript {
             },
             InstallConfig::upgradable::<Factory>(),
             container,
-            cspr!(1000),
+            cspr!(400),
         )?;
 
         println!("Factory deployed successfully!");
@@ -100,7 +109,7 @@ impl DeployScript for ContractsDeployScript {
             NoArgs,
             InstallConfig::upgradable::<WrappedNativeToken>(),
             container,
-            cspr!(500),
+            cspr!(400),
         )?;
 
         println!("Wrapped Native Token (WCSPR) deployed successfully!");
@@ -124,6 +133,7 @@ impl DeployScript for ContractsDeployScript {
 
         // Create and initialize trading pairs
         println!("\nCreating trading pairs...");
+        env.set_gas(500_000_000_000);
 
         // Creating TokenA-TokenB pair
         let pair_a_b = factory.create_pair(token_a.address(), token_b.address());
@@ -143,6 +153,8 @@ impl DeployScript for ContractsDeployScript {
         println!("  ✓ TokenB-WCSPR pair created and initialized");
         container.add_contract_named(&pair_b_wcspr_contract, Some("TokenB_WCSPR".to_string()))?;
 
+        let balance_after = env.balance_of(&env.caller());
+
         println!("\n✓ Deployment completed successfully!");
         println!("\nDeployed contracts:");
         println!("  - Factory - {:?}", factory.address());
@@ -154,6 +166,7 @@ impl DeployScript for ContractsDeployScript {
         println!("  - TokenA_TokenB - {:?}", pair_a_b.address());
         println!("  - TokenA_WCSPR - {:?}", pair_a_wcspr.address());
         println!("  - TokenB_WCSPR - {:?}", pair_b_wcspr.address());
+        println!("\nUsed gas - {:?}", balance_before - balance_after);
         println!("\nNext steps:");
         println!("  1. Use 'mint-tokens' to mint tokens to accounts");
         println!("  2. Use 'add-liquidity' to add liquidity to pairs");

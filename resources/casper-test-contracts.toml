@@ -1,0 +1,46 @@
+last_updated = "2025-12-02T13:37:46Z"
+
+[[contracts]]
+name = "PairFactory"
+package_name = "PairFactory"
+package_hash = "hash-e2913bac4c4c64bfb110b131b8b5f794ae08e2ee4354e133868c34d7f3b8341e"
+
+[[contracts]]
+name = "Factory"
+package_name = "Factory"
+package_hash = "hash-89eed617283ab9268a52a28173829ed44d1de2205f0091f84763888c80bc6fba"
+
+[[contracts]]
+name = "SampleToken"
+package_name = "SampleTokenA"
+package_hash = "hash-f72080fd3be6137e6a594e4417771ac34c766c9bddf1755f55a97a68f34e78e7"
+
+[[contracts]]
+name = "SampleToken"
+package_name = "SampleTokenB"
+package_hash = "hash-b295ff13c52671824efd33b28326d8523e36769bd5d22ac120f46262249d7d9b"
+
+[[contracts]]
+name = "WrappedNativeToken"
+package_name = "WrappedNativeToken"
+package_hash = "hash-0403e6876ccebf9a7c86dfdd0eaec9266e95e73fbffde836fceac47b9e3ddd24"
+
+[[contracts]]
+name = "Router"
+package_name = "Router"
+package_hash = "hash-4f3e7c5219a49baf2bae1ec9d14f7f99ad491631dc90e2e4a5cdcce413809239"
+
+[[contracts]]
+name = "Pair"
+package_name = "TokenA_TokenB"
+package_hash = "hash-e8c4cb38115ec0463c033c8cbf9c4409cb5d7be7239d2b483bdc4b4d7e26c0f8"
+
+[[contracts]]
+name = "Pair"
+package_name = "TokenA_WCSPR"
+package_hash = "hash-8b9226740b075f4e38b788001fd94141dfcba090d62b6724be096211848ca7a8"
+
+[[contracts]]
+name = "Pair"
+package_name = "TokenB_WCSPR"
+package_hash = "hash-46afc2b7bfa5ebc57952e8db26cbb4de17d9e712f30b11e6bbe3e5bc661966f7"
