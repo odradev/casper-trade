@@ -24,6 +24,13 @@
           "is_ref": false,
           "is_slice": false,
           "is_required": true
+        },
+        {
+          "name": "contract_name",
+          "ty": "String",
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
         }
       ]
     },
@@ -307,6 +314,29 @@
       "return_ty": {
         "Option": "Key"
       },
+      "ty": "Public",
+      "attributes": []
+    },
+    {
+      "name": "get_pair_name",
+      "args": [
+        {
+          "name": "token_a",
+          "ty": "Key",
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        },
+        {
+          "name": "token_b",
+          "ty": "Key",
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        }
+      ],
+      "is_mutable": false,
+      "return_ty": "String",
       "ty": "Public",
       "attributes": []
     }

@@ -7,7 +7,7 @@ use casper_trade_contracts::pair::{Pair, PairFactory, PairHostRef};
 use casper_trade_contracts::router::{Router, RouterInitArgs};
 use casper_trade_contracts::sample_tokens::{SampleToken, SampleTokenInitArgs};
 use odra::casper_types::U256;
-use odra::host::{Deployer, HostEnv, HostRef, InstallConfig, NoArgs};
+use odra::host::{HostEnv, HostRef, InstallConfig, NoArgs};
 use odra::prelude::Addressable;
 use odra_cli::{cspr, deploy::DeployScript, DeployedContractsContainer, DeployerExt, OdraCli};
 use odra_modules::wrapped_native::WrappedNativeToken;
@@ -33,7 +33,7 @@ impl DeployScript for ContractsDeployScript {
             env,
             None,
             NoArgs,
-        InstallConfig::upgradable::<PairFactory>(),
+            InstallConfig::upgradable::<PairFactory>(),
             container,
             cspr!(800),
         )?;

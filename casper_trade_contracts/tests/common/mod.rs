@@ -29,6 +29,7 @@ pub struct TestContext {
     pub alice: Address,
 }
 
+#[allow(dead_code)]
 pub fn setup() -> TestContext {
     let env = odra_test::env();
     let owner = env.get_account(0);

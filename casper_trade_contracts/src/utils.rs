@@ -1,3 +1,4 @@
+use alloc::string::{String, ToString};
 use core::str::FromStr;
 
 use odra::{casper_types::U256, prelude::Address};
@@ -26,4 +27,11 @@ pub fn encode_price(reserve0: U256, reserve1: U256) -> (U256, U256) {
     let price0 = (reserve1 * q112) / reserve0;
     let price1 = (reserve0 * q112) / reserve1;
     (price0, price1)
+}
+pub fn contract_name(token0_name: &str, token1_name: &str) -> String {
+    "CSPR.trade: ".to_string() + token0_name + " - " + token1_name
+}
+
+pub fn contract_symbol(token0_symbol: &str, token1_symbol: &str) -> String {
+    token0_symbol.to_string() + "-" + token1_symbol + " LP"
 }

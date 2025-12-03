@@ -390,16 +390,7 @@
           "is_ref": false,
           "is_slice": false,
           "is_required": true
-        }
-      ],
-      "is_mutable": true,
-      "return_ty": "Unit",
-      "ty": "Constructor",
-      "attributes": []
-    },
-    {
-      "name": "initialize",
-      "args": [
+        },
         {
           "name": "token0",
           "ty": "Key",
@@ -417,7 +408,7 @@
       ],
       "is_mutable": true,
       "return_ty": "Unit",
-      "ty": "Public",
+      "ty": "Constructor",
       "attributes": []
     },
     {
@@ -616,22 +607,6 @@
       "attributes": []
     },
     {
-      "name": "name",
-      "args": [],
-      "is_mutable": false,
-      "return_ty": "String",
-      "ty": "Public",
-      "attributes": []
-    },
-    {
-      "name": "symbol",
-      "args": [],
-      "is_mutable": false,
-      "return_ty": "String",
-      "ty": "Public",
-      "attributes": []
-    },
-    {
       "name": "total_supply",
       "args": [],
       "is_mutable": false,
@@ -751,6 +726,22 @@
       ],
       "is_mutable": false,
       "return_ty": "U256",
+      "ty": "Public",
+      "attributes": []
+    },
+    {
+      "name": "name",
+      "args": [],
+      "is_mutable": false,
+      "return_ty": "String",
+      "ty": "Public",
+      "attributes": []
+    },
+    {
+      "name": "symbol",
+      "args": [],
+      "is_mutable": false,
+      "return_ty": "String",
       "ty": "Public",
       "attributes": []
     }

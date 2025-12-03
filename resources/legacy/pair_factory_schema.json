@@ -46,6 +46,20 @@
           "is_ref": false,
           "is_slice": false,
           "is_required": true
+        },
+        {
+          "name": "token0",
+          "ty": "Key",
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        },
+        {
+          "name": "token1",
+          "ty": "Key",
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
         }
       ],
       "is_mutable": true,

@@ -68,6 +68,11 @@
             "name": "pair",
             "description": null,
             "ty": "Key"
+          },
+          {
+            "name": "contract_name",
+            "description": null,
+            "ty": "String"
           }
         ]
       }
@@ -315,6 +320,28 @@
       "return_ty": {
         "Option": "Key"
       },
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "get_pair_name",
+      "description": "Returns the pair name under which it was deployed by factory.",
+      "is_mutable": false,
+      "arguments": [
+        {
+          "name": "token_a",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        },
+        {
+          "name": "token_b",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "String",
       "is_contract_context": true,
       "access": "public"
     }

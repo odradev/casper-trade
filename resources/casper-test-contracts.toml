@@ -1,46 +1,46 @@
-last_updated = "2025-12-02T13:37:46Z"
+last_updated = "2025-12-03T12:54:26Z"
 
 [[contracts]]
 name = "PairFactory"
 package_name = "PairFactory"
-package_hash = "hash-e2913bac4c4c64bfb110b131b8b5f794ae08e2ee4354e133868c34d7f3b8341e"
+package_hash = "hash-c429163d1f091693e8a85f4e957e98fd18aa05d6f383ae42bf962a7c51053476"
 
 [[contracts]]
 name = "Factory"
 package_name = "Factory"
-package_hash = "hash-89eed617283ab9268a52a28173829ed44d1de2205f0091f84763888c80bc6fba"
+package_hash = "hash-e372dee25c285b1059c8382117caf509d9270fce783ca03e38314c854f40991f"
 
 [[contracts]]
 name = "SampleToken"
 package_name = "SampleTokenA"
-package_hash = "hash-f72080fd3be6137e6a594e4417771ac34c766c9bddf1755f55a97a68f34e78e7"
+package_hash = "hash-dac01216db5419380e07574267c860959c235458597deeaef0e5e0570419c338"
 
 [[contracts]]
 name = "SampleToken"
 package_name = "SampleTokenB"
-package_hash = "hash-b295ff13c52671824efd33b28326d8523e36769bd5d22ac120f46262249d7d9b"
+package_hash = "hash-fc3954e8ce18d8136a0e2837a971b9ca881cdbe1c8e8afc91b0d097f78d29f8c"
 
 [[contracts]]
 name = "WrappedNativeToken"
 package_name = "WrappedNativeToken"
-package_hash = "hash-0403e6876ccebf9a7c86dfdd0eaec9266e95e73fbffde836fceac47b9e3ddd24"
+package_hash = "hash-a402dcfeb1cb8412edbe12faa4320abf9a878d5e6814f4b8558fab36abae020f"
 
 [[contracts]]
 name = "Router"
 package_name = "Router"
-package_hash = "hash-4f3e7c5219a49baf2bae1ec9d14f7f99ad491631dc90e2e4a5cdcce413809239"
+package_hash = "hash-e01970d35b4cb2f2f87b190d437ea26178bfa5ec63d2ffc0d8d8d143fea6a367"
 
 [[contracts]]
 name = "Pair"
 package_name = "TokenA_TokenB"
-package_hash = "hash-e8c4cb38115ec0463c033c8cbf9c4409cb5d7be7239d2b483bdc4b4d7e26c0f8"
+package_hash = "hash-98c8cdbab99547eb1b0425d5879529b05287ce6984533ccf56d61c81f23680db"
 
 [[contracts]]
 name = "Pair"
 package_name = "TokenA_WCSPR"
-package_hash = "hash-8b9226740b075f4e38b788001fd94141dfcba090d62b6724be096211848ca7a8"
+package_hash = "hash-cf1aa9eb2b8680e462abc85bf29ed3ce4c85c17ddfa79c538cd8d3774d07f5af"
 
 [[contracts]]
 name = "Pair"
 package_name = "TokenB_WCSPR"
-package_hash = "hash-46afc2b7bfa5ebc57952e8db26cbb4de17d9e712f30b11e6bbe3e5bc661966f7"
+package_hash = "hash-3871fa123a0436735b43f41f10526177c4a8a7e6b675b07f46e38d829a1e43e3"

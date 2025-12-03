@@ -1,17 +1,19 @@
 use crate::factory::errors::FactoryError;
 use crate::pair::events::{FactoryInitialized, FeeToUpdated};
-use crate::pair::{PairContractRef, PairFactoryContractRef};
+use crate::pair::PairFactoryContractRef;
 use crate::router::errors::LibraryError::{IdenticalAddresses, ZeroAddress};
-use crate::utils::zero_address;
+use crate::utils::{contract_name, contract_symbol, zero_address};
 use odra::prelude::*;
 use odra::ContractRef;
 use odra_modules::access::{AccessControl, DEFAULT_ADMIN_ROLE};
+use odra_modules::cep18_token::Cep18ContractRef;
 
 #[odra::event]
 pub struct PairCreated {
     pub token0: Address,
     pub token1: Address,
     pub pair: Address,
+    pub contract_name: String,
 }
 
 #[odra::module(events = [PairCreated, FeeToUpdated, FactoryInitialized], errors = FactoryError)]
@@ -87,6 +89,11 @@ impl Factory {
 
         match self.pairs.get(&(token0, token1)) {
             None => {
+                let token0_instance = Cep18ContractRef::new(self.env(), token0);
+                let token1_instance = Cep18ContractRef::new(self.env(), token1);
+                let contract_symbol =
+                    contract_symbol(&token0_instance.symbol(), &token1_instance.symbol());
+
                 let mut contract_factory = PairFactoryContractRef::new(
                     self.env(),
                     self.pair_factory
@@ -94,17 +101,18 @@ impl Factory {
                 );
                 let pair = contract_factory
                     .new_contract(
-                        token0.to_string() + &token1.to_string(),
+                        contract_symbol.clone(),
                         self.env().self_address(),
+                        token0,
+                        token1,
                     )
                     .0;
-                let mut pair_instance = PairContractRef::new(self.env(), pair);
-                pair_instance.initialize(token0, token1);
                 self.pairs.set(&(token0, token1), pair);
                 self.env().emit_event(PairCreated {
                     token0,
                     token1,
                     pair,
+                    contract_name: contract_symbol,
                 });
                 pair
             }
@@ -116,6 +124,15 @@ impl Factory {
     pub fn get_pair(&self, token_a: Address, token_b: Address) -> Option<Address> {
         let (token0, token1) = self.sort_tokens(token_a, token_b);
         self.pairs.get(&(token0, token1))
+    }
+
+    /// Returns the pair name under which it was deployed by factory.
+    pub fn get_pair_name(&self, token_a: Address, token_b: Address) -> String {
+        let (token0, token1) = self.sort_tokens(token_a, token_b);
+
+        let token0_instance = Cep18ContractRef::new(self.env(), token0);
+        let token1_instance = Cep18ContractRef::new(self.env(), token1);
+        contract_name(&token0_instance.symbol(), &token1_instance.symbol())
     }
 
     /// Sorts two token addresses to ensure consistent ordering.
