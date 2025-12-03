@@ -68,3 +68,9 @@ pub struct CSPRRefunded {
     pub to: Address,
     pub amount: U512,
 }
+
+#[odra::event]
+pub struct PairUpgraded {
+    pub from_revision: u8,
+    pub to_revision: u8,
+}

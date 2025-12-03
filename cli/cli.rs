@@ -13,7 +13,7 @@ use odra_cli::{cspr, deploy::DeployScript, DeployedContractsContainer, DeployerE
 use odra_modules::wrapped_native::WrappedNativeToken;
 
 mod scenarios;
-use scenarios::{AddLiquidity, MintTokens, SetupPair, SwapTokens};
+use scenarios::{AddLiquidity, MintTokens, SetupPair, SwapTokens, UpgradePairs};
 
 use crate::scenarios::AddLiquidityCSPR;
 
@@ -195,6 +195,7 @@ pub fn main() {
         .scenario(AddLiquidity)
         .scenario(AddLiquidityCSPR)
         .scenario(SwapTokens)
+        .scenario(UpgradePairs)
         .build()
         .run();
 }
