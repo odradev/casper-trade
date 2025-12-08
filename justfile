@@ -16,7 +16,7 @@ check-lint: clippy
     cargo fmt -- --check
 
 run-nctl:
-    docker run --rm -it --name mynctl -d -p 11101:11101 -p 14101:14101 -p 18101:18101 -p 25101:25101 makesoftware/casper-nctl:v203
+    docker run --cpus="1" --rm -it --name mynctl -d -p 11101:11101 -p 14101:14101 -p 18101:18101 -p 25101:25101 makesoftware/casper-nctl:v203
 
 cli *ARGS:
     cargo run --bin casper_trade_cli -- {{ARGS}}

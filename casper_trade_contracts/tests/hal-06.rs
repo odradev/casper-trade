@@ -16,6 +16,9 @@ fn test_undistinguishable_lp_token_metadata() {
     // assert_eq!(pair_name, "CasperTradeV2Pair".to_string());
 
     // The adjustment generates unique names and symbols for the pair:
-    assert_eq!(pair_name, "CasperTradeV2-STA-STB".to_string());
-    assert_eq!(pair_symbol, "CT-LP-STA-STB");
+    assert_eq!(
+        pair_name,
+        "CSPR.trade: Sample Token A - Sample Token B".to_string()
+    );
+    assert_eq!(pair_symbol, "STA-STB LP");
 }

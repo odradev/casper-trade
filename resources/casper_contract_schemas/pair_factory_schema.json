@@ -44,6 +44,18 @@
           "description": null,
           "ty": "Key",
           "optional": false
+        },
+        {
+          "name": "token0",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        },
+        {
+          "name": "token1",
+          "description": null,
+          "ty": "Key",
+          "optional": false
         }
       ],
       "return_ty": {

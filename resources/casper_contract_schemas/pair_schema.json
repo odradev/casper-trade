@@ -414,28 +414,6 @@
   ],
   "entry_points": [
     {
-      "name": "initialize",
-      "description": "",
-      "is_mutable": true,
-      "arguments": [
-        {
-          "name": "token0",
-          "description": null,
-          "ty": "Key",
-          "optional": false
-        },
-        {
-          "name": "token1",
-          "description": null,
-          "ty": "Key",
-          "optional": false
-        }
-      ],
-      "return_ty": "Unit",
-      "is_contract_context": true,
-      "access": "public"
-    },
-    {
       "name": "mint",
       "description": "",
       "is_mutable": true,
@@ -628,24 +606,6 @@
       "access": "public"
     },
     {
-      "name": "name",
-      "description": "",
-      "is_mutable": false,
-      "arguments": [],
-      "return_ty": "String",
-      "is_contract_context": true,
-      "access": "public"
-    },
-    {
-      "name": "symbol",
-      "description": "",
-      "is_mutable": false,
-      "arguments": [],
-      "return_ty": "String",
-      "is_contract_context": true,
-      "access": "public"
-    },
-    {
       "name": "total_supply",
       "description": "Delegated. See `self.token.total_supply()` for details.",
       "is_mutable": false,
@@ -763,6 +723,24 @@
       "return_ty": "U256",
       "is_contract_context": true,
       "access": "public"
+    },
+    {
+      "name": "name",
+      "description": "Delegated. See `self.token.name()` for details.",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "String",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "symbol",
+      "description": "Delegated. See `self.token.symbol()` for details.",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "String",
+      "is_contract_context": true,
+      "access": "public"
     }
   ],
   "events": [
@@ -853,6 +831,18 @@
       },
       {
         "name": "factory",
+        "description": null,
+        "ty": "Key",
+        "optional": false
+      },
+      {
+        "name": "token0",
+        "description": null,
+        "ty": "Key",
+        "optional": false
+      },
+      {
+        "name": "token1",
         "description": null,
         "ty": "Key",
         "optional": false

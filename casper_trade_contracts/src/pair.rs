@@ -6,6 +6,7 @@ use odra::{
 use odra_modules::cep18_token::{Cep18, Cep18ContractRef};
 
 use crate::pair::events::{PairInitialized, ProtocolFeeMinted, SkimExcess};
+use crate::utils::{contract_name, contract_symbol};
 use crate::{
     callee::CasperTradeCalleeContractRef,
     factory::FactoryContractRef,
@@ -25,8 +26,6 @@ pub const MINIMUM_LIQUIDITY: u64 = 1000;
 #[odra::module(factory=on, events = [PairMint, PairBurn, PairSwap, PairSync, PairInitialized, SkimExcess, ProtocolFeeMinted], errors = PairError)]
 pub struct Pair {
     pub token: SubModule<Cep18>,
-    pub symbol: Var<String>,
-    pub name: Var<String>,
     pub factory: Var<Address>,
     pub token0: Var<Address>,
     pub token0_decimals: Var<u8>,
@@ -51,32 +50,14 @@ impl Pair {
             fn transfer_from(&mut self, owner: &Address, recipient: &Address, amount: &U256);
             fn approve(&mut self, spender: &Address, amount: &U256);
             fn allowance(&self, owner: &Address, spender: &Address) -> U256;
+            fn name(&self) -> String;
+            fn symbol(&self) -> String;
         }
     }
 
-    pub fn init(&mut self, factory: Address) {
+    pub fn init(&mut self, factory: Address, token0: Address, token1: Address) {
         self.factory.set(factory);
-        let symbol = "LP";
-        let name = "CasperTradeV2Pair";
-        let decimals = 18;
-        let initial_supply = U256::from(0);
-        self.token.init(
-            symbol.to_string(),
-            name.to_string(),
-            decimals,
-            initial_supply,
-        );
-    }
 
-    pub fn initialize(&mut self, token0: Address, token1: Address) {
-        let factory = self
-            .factory
-            .get()
-            .unwrap_or_revert_with(&self.env(), PairError::Misconfigured);
-        let caller = self.env().caller();
-        if factory != caller {
-            self.env().revert(PairError::Forbidden);
-        }
         self.token0.set(token0);
         self.token1.set(token1);
 
@@ -86,14 +67,24 @@ impl Pair {
         let token0_symbol = token0_instance.symbol();
         let token1_symbol = token1_instance.symbol();
 
+        let token0_name = token0_instance.name();
+        let token1_name = token1_instance.name();
+
         self.token0_decimals.set(token0_instance.decimals());
         self.token1_decimals.set(token1_instance.decimals());
 
-        self.name
-            .set("CasperTradeV2-".to_string() + &token0_symbol + "-" + &token1_symbol);
-        self.symbol
-            .set("CT-LP-".to_string() + &token0_symbol + "-" + &token1_symbol);
-        self.env().emit_event(PairInitialized { token0, token1 })
+        let name = contract_name(&token0_name, &token1_name);
+        let symbol = contract_symbol(&token0_symbol, &token1_symbol);
+        let decimals = 18;
+        let initial_supply = U256::from(0);
+
+        self.token.init(
+            symbol.to_string(),
+            name.to_string(),
+            decimals,
+            initial_supply,
+        );
+        self.env().emit_event(PairInitialized { token0, token1 });
     }
 
     #[odra(non_reentrant)]
@@ -390,14 +381,6 @@ impl Pair {
             self.token1_decimals
                 .get_or_revert_with(PairError::NotInitialized),
         )
-    }
-
-    pub fn name(&self) -> String {
-        self.name.get_or_revert_with(PairError::NotInitialized)
-    }
-
-    pub fn symbol(&self) -> String {
-        self.symbol.get_or_revert_with(PairError::NotInitialized)
     }
 
     // Take a closer look during code review to confirm the soundness of this function
