@@ -3,6 +3,7 @@ pub mod add_liquidity_cspr;
 pub mod mint_tokens;
 pub mod setup_pair;
 pub mod swap_tokens;
+mod upgrade_factory;
 pub mod upgrade_pairs;
 pub mod utils;
 
@@ -11,4 +12,5 @@ pub use add_liquidity_cspr::AddLiquidityCSPR;
 pub use mint_tokens::MintTokens;
 pub use setup_pair::SetupPair;
 pub use swap_tokens::SwapTokens;
+pub use upgrade_factory::UpgradeFactory;
 pub use upgrade_pairs::UpgradePairs;

@@ -15,7 +15,7 @@ use odra_modules::wrapped_native::WrappedNativeToken;
 mod scenarios;
 use scenarios::{AddLiquidity, MintTokens, SetupPair, SwapTokens, UpgradePairs};
 
-use crate::scenarios::AddLiquidityCSPR;
+use crate::scenarios::{AddLiquidityCSPR, UpgradeFactory};
 
 /// Deploys all Casper Trade contracts
 pub struct ContractsDeployScript;
@@ -196,6 +196,7 @@ pub fn main() {
         .scenario(AddLiquidityCSPR)
         .scenario(SwapTokens)
         .scenario(UpgradePairs)
+        .scenario(UpgradeFactory)
         .build()
         .run();
 }

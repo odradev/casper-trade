@@ -23,6 +23,9 @@ pub mod events;
 pub const MINIMUM_LIQUIDITY: u64 = 1000;
 pub const NEWEST_REVISION: u8 = 1;
 
+pub const TOKEN0_KEY: &str = "token0";
+pub const TOKEN1_KEY: &str = "token1";
+
 /// Pair contract - implementation based on Uniswap V2
 #[odra::module(factory=on, events = [PairMint, PairBurn, PairSwap, PairSync, PairInitialized, SkimExcess, ProtocolFeeMinted], errors = PairError)]
 pub struct Pair {
@@ -60,43 +63,53 @@ impl Pair {
     pub fn init(&mut self, factory: Address, token0: Address, token1: Address) {
         self.factory.set(factory);
 
+        self.token0.set(token0);
+        self.token1.set(token1);
+
+        let token0_instance = Cep18ContractRef::new(self.env(), token0);
+        let token1_instance = Cep18ContractRef::new(self.env(), token1);
+
+        let token0_symbol = token0_instance.symbol();
+        let token1_symbol = token1_instance.symbol();
+
+        let token0_name = token0_instance.name();
+        let token1_name = token1_instance.name();
+
+        self.token0_decimals.set(token0_instance.decimals());
+        self.token1_decimals.set(token1_instance.decimals());
+
+        let name = contract_name(&token0_name, &token1_name);
+        let symbol = contract_symbol(&token0_symbol, &token1_symbol);
+        let decimals = 18;
+        let initial_supply = U256::from(0);
+
+        self.token.init(
+            symbol.to_string(),
+            name.to_string(),
+            decimals,
+            initial_supply,
+        );
+        self.env().emit_event(PairInitialized { token0, token1 });
+    }
+
     pub fn upgrade(&mut self) {
-        let mut current_revision = self.revision.get_or_default();
+        let current_revision = self.revision.get_or_default();
 
-        // Upgrading from 0 to 1
-        if current_revision == 0 {
-            // Changed in revision 1:
-            // We set pair's symbol and name during initialization
-            // We also set decimals for getters
-            // So we fix it in this upgrade
-            let token0 = self.token0.get();
-            let token1 = self.token1.get();
+        if current_revision < 1 {
+            let token0 = self
+                .token0
+                .get()
+                .unwrap_or_revert_with(&self.env(), PairError::Misconfigured);
+            let token1 = self
+                .token1
+                .get()
+                .unwrap_or_revert_with(&self.env(), PairError::Misconfigured);
 
-            if token0.is_none() || token1.is_none() {
-                return;
-            }
-
-            let token0 = token0.unwrap();
-            let token1 = token1.unwrap();
-
-            let token0_instance = Cep18ContractRef::new(self.env(), token0);
-            let token1_instance = Cep18ContractRef::new(self.env(), token1);
-
-            let token0_symbol = token0_instance.symbol();
-            let token1_symbol = token1_instance.symbol();
-
-            self.token0_decimals.set(token0_instance.decimals());
-            self.token1_decimals.set(token1_instance.decimals());
-
-            self.name
-                .set("CasperTradeV2-".to_string() + &token0_symbol + "-" + &token1_symbol);
-            self.symbol
-                .set("CT-LP-".to_string() + &token0_symbol + "-" + &token1_symbol);
-
-            current_revision += 1;
+            self.env().set_named_value(TOKEN0_KEY, token0);
+            self.env().set_named_value(TOKEN1_KEY, token1);
         }
 
-        self.revision.set(current_revision);
+        self.revision.set(NEWEST_REVISION);
     }
 
     pub fn initialize(&mut self, token0: Address, token1: Address) {
@@ -109,7 +122,9 @@ impl Pair {
             self.env().revert(PairError::Forbidden);
         }
         self.token0.set(token0);
+        self.env().set_named_value(TOKEN0_KEY, token0);
         self.token1.set(token1);
+        self.env().set_named_value(TOKEN1_KEY, token1);
 
         let token0_instance = Cep18ContractRef::new(self.env(), token0);
         let token1_instance = Cep18ContractRef::new(self.env(), token1);

@@ -1,5 +1,6 @@
 use super::utils::{create_token_ref, parse_token_input};
 use casper_trade_contracts::pair::PairFactory;
+use casper_trade_contracts::utils::contract_symbol;
 use odra::host::HostEnv;
 use odra::schema::casper_contract_schema::NamedCLType;
 use odra_cli::{
@@ -11,8 +12,7 @@ pub struct UpgradePairs;
 
 impl ScenarioMetadata for UpgradePairs {
     const NAME: &'static str = "UpgradePairs";
-    const DESCRIPTION: &'static str =
-        "Upgrade pairs created by PairFactory to the newest version";
+    const DESCRIPTION: &'static str = "Upgrade pairs created by PairFactory to the newest version";
 }
 
 impl Scenario for UpgradePairs {
@@ -33,7 +33,7 @@ impl Scenario for UpgradePairs {
         container: &DeployedContractsContainer,
         args: Args,
     ) -> Result<(), Error> {
-        env.set_gas(100_000_000_000);
+        env.set_gas(1000_000_000_000);
 
         // Get token pairs from args
         let token_pairs_input = args.get_single::<String>("token_pairs")?;
@@ -83,75 +83,48 @@ impl Scenario for UpgradePairs {
             let token_a = create_token_ref(token_a_address, env);
             let token_b = create_token_ref(token_b_address, env);
 
-            // Get token names from blockchain
-            let token_a_name = token_a.name();
-            let token_b_name = token_b.name();
-
             odra_cli::log(format!("Processing pair:"));
-            odra_cli::log(format!("  Token A: {} - {}", token_a_display, token_a_name));
-            odra_cli::log(format!("  Token B: {} - {}", token_b_display, token_b_name));
+            odra_cli::log(format!(
+                "  Token A: {} - {}",
+                token_a_display,
+                token_a.name()
+            ));
+            odra_cli::log(format!(
+                "  Token B: {} - {}",
+                token_b_display,
+                token_b.name()
+            ));
 
             // Sort tokens the same way the factory does
-            let (token0_address, token1_address, token0_name, token1_name) =
-                if token_a_address < token_b_address {
-                    (token_a_address, token_b_address, token_a_name, token_b_name)
-                } else {
-                    (token_b_address, token_a_address, token_b_name, token_a_name)
-                };
+            let (token0_address, token1_address) = if token_a_address < token_b_address {
+                (token_a_address, token_b_address)
+            } else {
+                (token_b_address, token_a_address)
+            };
 
-            // Create pair name in factory format: token0name + token1name
-            let pair_contract_name = format!("{}{}", token0_name, token1_name);
+            let token_a = create_token_ref(token0_address, env);
+            let token_b = create_token_ref(token1_address, env);
 
-            odra_cli::log(format!("  Sorted tokens: token0={}, token1={}", token0_name, token1_name));
-            odra_cli::log(format!("  Pair contract name: {}", pair_contract_name));
+            let token_a_symbol = token_a.symbol();
+            let token_b_symbol = token_b.symbol();
+
+            let pair_symbol = contract_symbol(&token_a_symbol, &token_b_symbol);
+
+            odra_cli::log(format!(
+                "  Sorted tokens: token0={}, token1={}",
+                token_a_symbol, token_b_symbol
+            ));
+            odra_cli::log(format!("  Pair contract name: {}", pair_symbol));
             odra_cli::log(format!("  Upgrading..."));
 
             // Use upgrade_child_contract method from the factory
             // The Pair::upgrade() method takes no arguments, so we just pass the contract name
-            pair_factory.upgrade_child_contract(pair_contract_name.clone());
+            pair_factory.upgrade_child_contract(pair_symbol.clone());
 
-            odra_cli::log(format!("  ✓ Pair {} upgraded successfully\n", pair_contract_name));
+            odra_cli::log(format!("  ✓ Pair {} upgraded successfully\n", pair_symbol));
         }
 
         odra_cli::log("✓ All pairs upgraded successfully!");
-        odra_cli::log("\nVerifying upgraded pairs...\n");
-
-        // Verify each pair after upgrade
-        for pair_spec in pair_specs {
-            let tokens: Vec<&str> = pair_spec.split(':').collect();
-            let token_a_input = tokens[0].trim();
-            let token_b_input = tokens[1].trim();
-
-            let (token_a_address, _) = parse_token_input(token_a_input, "token_a", env, container)?;
-            let (token_b_address, _) = parse_token_input(token_b_input, "token_b", env, container)?;
-
-            let token_a = create_token_ref(token_a_address, env);
-            let token_b = create_token_ref(token_b_address, env);
-
-            let token_a_name = token_a.name();
-            let token_b_name = token_b.name();
-
-            // Sort tokens to get the correct pair name
-            let (_token0_address, _token1_address, token0_name, token1_name) =
-                if token_a_address < token_b_address {
-                    (token_a_address, token_b_address, token_a_name, token_b_name)
-                } else {
-                    (token_b_address, token_a_address, token_b_name, token_a_name)
-                };
-
-            let pair_contract_name = format!("{}{}", token0_name, token1_name);
-
-            // Get the pair address from the factory
-            // We can't use container.address_by_name because the pair might not be in the container
-            // So we'll construct the pair reference using the factory's stored address
-            odra_cli::log(format!("Pair: {}", pair_contract_name));
-            odra_cli::log(format!("  Token0: {} ({:?})", token0_name, token0_address));
-            odra_cli::log(format!("  Token1: {} ({:?})", token1_name, token1_address));
-
-            // Note: We can't easily get the pair address without calling the factory's get_pair method
-            // which would require a Factory contract reference. For now, we'll just confirm the upgrade.
-            odra_cli::log("  ✓ Upgrade confirmed\n");
-        }
 
         Ok(())
     }
