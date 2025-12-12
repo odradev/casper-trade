@@ -27,7 +27,6 @@ impl DeployScript for ContractsDeployScript {
         container: &mut DeployedContractsContainer,
     ) -> Result<(), odra_cli::deploy::Error> {
         let balance_before = env.balance_of(&env.caller());
-        env.set_gas(800_000_000_000);
 
         let pair_factory = PairFactory::load_or_deploy_with_cfg(
             env,
@@ -35,7 +34,7 @@ impl DeployScript for ContractsDeployScript {
             NoArgs,
             InstallConfig::upgradable::<PairFactory>(),
             container,
-            cspr!(800),
+            cspr!(799),
         )?;
 
         env.set_gas(300_000_000_000);

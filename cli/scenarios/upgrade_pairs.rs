@@ -33,7 +33,7 @@ impl Scenario for UpgradePairs {
         container: &DeployedContractsContainer,
         args: Args,
     ) -> Result<(), Error> {
-        env.set_gas(1000_000_000_000);
+        env.set_gas(800_000_000_000);
 
         // Get token pairs from args
         let token_pairs_input = args.get_single::<String>("token_pairs")?;
@@ -83,7 +83,7 @@ impl Scenario for UpgradePairs {
             let token_a = create_token_ref(token_a_address, env);
             let token_b = create_token_ref(token_b_address, env);
 
-            odra_cli::log(format!("Processing pair:"));
+            odra_cli::log("Processing pair:".to_string());
             odra_cli::log(format!(
                 "  Token A: {} - {}",
                 token_a_display,
@@ -115,7 +115,7 @@ impl Scenario for UpgradePairs {
                 token_a_symbol, token_b_symbol
             ));
             odra_cli::log(format!("  Pair contract name: {}", pair_symbol));
-            odra_cli::log(format!("  Upgrading..."));
+            odra_cli::log("  Upgrading...".to_string());
 
             // Use upgrade_child_contract method from the factory
             // The Pair::upgrade() method takes no arguments, so we just pass the contract name
