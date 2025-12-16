@@ -189,6 +189,8 @@ pub fn main() {
         .named_contract::<Pair>("TokenA_TokenB".to_string())
         .named_contract::<Pair>("TokenA_WCSPR".to_string())
         .named_contract::<Pair>("TokenB_WCSPR".to_string())
+        .named_contract::<Pair>("CSPRHAM_WCSPR".to_string())
+        .named_contract::<SampleToken>("CSPRHAM".to_string())
         .scenario(MintTokens)
         .scenario(SetupPair)
         .scenario(AddLiquidity)

@@ -3,3 +3,4 @@
 /target
 .env
 .idea
+resources/casper-net-1-contracts.toml

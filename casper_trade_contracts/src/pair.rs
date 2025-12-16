@@ -66,6 +66,9 @@ impl Pair {
         self.token0.set(token0);
         self.token1.set(token1);
 
+        self.env().set_named_value(TOKEN0_KEY, token0);
+        self.env().set_named_value(TOKEN1_KEY, token1);
+
         let token0_instance = Cep18ContractRef::new(self.env(), token0);
         let token1_instance = Cep18ContractRef::new(self.env(), token1);
 
@@ -95,7 +98,7 @@ impl Pair {
     pub fn upgrade(&mut self) {
         let current_revision = self.revision.get_or_default();
 
-        if current_revision < 1 {
+        if current_revision < 2 {
             let token0 = self
                 .token0
                 .get()
