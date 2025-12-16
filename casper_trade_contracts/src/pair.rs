@@ -21,7 +21,7 @@ pub mod errors;
 pub mod events;
 
 pub const MINIMUM_LIQUIDITY: u64 = 1000;
-pub const NEWEST_REVISION: u8 = 1;
+pub const NEWEST_REVISION: u8 = 2;
 
 pub const TOKEN0_KEY: &str = "token0";
 pub const TOKEN1_KEY: &str = "token1";
