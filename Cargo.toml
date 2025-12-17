@@ -6,12 +6,17 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-odra = { git = "https://github.com/odradev/odra", branch = "release/2.5.0", features = [], default-features = false }
-odra-test = { git = "https://github.com/odradev/odra", branch = "release/2.5.0", features = [], default-features = false }
-odra-build = { git = "https://github.com/odradev/odra", branch = "release/2.5.0", features = [], default-features = false }
-odra-cli = { git = "https://github.com/odradev/odra", branch = "release/2.5.0", features = [], default-features = false }
-odra-modules = { git = "https://github.com/odradev/odra", branch = "release/2.5.0", features = [], default-features = false }
+odra = { git = "https://github.com/odradev/odra", branch = "bugfix/livenet-debug", features = [], default-features = false }
+odra-test = { git = "https://github.com/odradev/odra", branch = "bugfix/livenet-debug", features = [], default-features = false }
+odra-build = { git = "https://github.com/odradev/odra", branch = "bugfix/livenet-debug", features = [], default-features = false }
+odra-cli = { git = "https://github.com/odradev/odra", branch = "bugfix/livenet-debug", features = [], default-features = false }
+odra-modules = { git = "https://github.com/odradev/odra", branch = "bugfix/livenet-debug", features = [], default-features = false }
 
+#odra = {path = "../odra/odra/odra" , features = [], default-features = false }
+#odra-test = { path = "../odra/odra/odra-test", features = [], default-features = false }
+#odra-build = { path = "../odra/odra/odra-build", features = [], default-features = false }
+#odra-cli = { path = "../odra/odra/odra-cli", features = [], default-features = false }
+#odra-modules = { path = "../odra/odra/modules", features = [], default-features = false }
 [profile.release]
 codegen-units = 1
 lto = true
