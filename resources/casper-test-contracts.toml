@@ -26,11 +26,6 @@ package_name = "WrappedNativeToken"
 package_hash = "hash-24e51b5a7a2977fd15f2d0aa4c0ba56d77b4f0db9574be74b5559a61372cfeec"
 
 [[contracts]]
-name = "SampleToken"
-package_name = "CSPRHAM"
-package_hash = "hash-0505c9d7ebaf58594562ae1f41092c4abaada005dfda126b66cb4ec329ae4bb2"
-
-[[contracts]]
 name = "Router"
 package_name = "Router"
 package_hash = "hash-13735731a30bb9388009c60990d7447c0551fef09af75c9725d69b24a3307604"
@@ -49,8 +44,3 @@ package_hash = "hash-92fc8ec2efc0e65e6091634239796906391bcf327942c034009095ce4ad
 name = "Pair"
 package_name = "TokenB_WCSPR"
 package_hash = "hash-8c86c5f296b87f9bcfcd7d3176dd6d821dc72fd291e60eca66506413976e02e1"
-
-[[contracts]]
-name = "Pair"
-package_name = "CSPRHAM_WCSPR"
-package_hash = "hash-dcd932dc7d72ee8763cca1c2ca9f7232233e9a15607727f024cd635ad0cb0086"
