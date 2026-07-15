@@ -31,7 +31,7 @@ impl Scenario for UpgradeFactory {
             pair_factory.address()
         ));
         env.set_gas(cspr!(800));
-        let _ = PairFactory::try_upgrade(env, pair_factory.address(), NoArgs).unwrap();
+        let _ = PairFactory::try_upgrade(env, pair_factory.address(), NoArgs)?;
 
         Ok(())
     }
