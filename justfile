@@ -1,8 +1,10 @@
 default:
     just -l
 
-test:
+build:
     cargo odra build
+
+test: build
     cp wasm/* casper_trade_contracts/wasm/
     cargo odra test -b casper -s
 
@@ -29,6 +31,5 @@ cli-on-nctl *args="":
     docker exec mynctl /bin/bash -c "cat  /home/casper/casper-nctl/assets/net-1/users/user-2/secret_key.pem" > .node-keys/secret_key_1.pem
     # Run the command
     ODRA_CASPER_LIVENET_SECRET_KEY_PATH=.node-keys/secret_key.pem ODRA_CASPER_LIVENET_NODE_ADDRESS=http://localhost:11101 ODRA_CASPER_LIVENET_EVENTS_URL=http://localhost:18101/events ODRA_CASPER_LIVENET_CHAIN_NAME=casper-net-1 ODRA_CASPER_LIVENET_KEY_1=.node-keys/secret_key_1.pem  cargo run --bin casper_trade_cli -- {{args}}
-
-    rm -rf examples/.node-keys
+    rm -rf .node-keys
 
