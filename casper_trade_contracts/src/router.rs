@@ -1,4 +1,5 @@
 pub mod errors;
+pub mod events;
 
 use odra::{
     casper_types::U256,
@@ -15,11 +16,12 @@ use crate::pair::PairContractRef;
 use crate::{
     factory::FactoryContractRef,
     router::errors::{LibraryError, RouterError},
+    router::events::RouterSwapHop,
 };
 
 /// Router - Router contract for Casper Trade V2
 /// Based on UniswapV2Router02
-#[odra::module(events = [CSPRRefunded], errors = RouterError)]
+#[odra::module(events = [CSPRRefunded, RouterSwapHop], errors = RouterError)]
 pub struct Router {
     factory: Var<Address>,
     wcspr: Var<Address>,
@@ -262,7 +264,17 @@ impl Router {
     // **** SWAP ****
 
     /// Internal swap function - requires the initial amount to have already been sent to the first pair
-    fn _swap(&mut self, amounts: Vec<U256>, path: Vec<Address>, to: Address) {
+    fn _swap(
+        &mut self,
+        amounts: Vec<U256>,
+        path: Vec<Address>,
+        to: Address,
+        initial_token_in_sender: Address,
+        route_recipient: Address,
+    ) {
+        let router_caller = self.env().caller();
+        let mut previous_pair = None;
+
         for i in 0..path.len() - 1 {
             let input = path[i];
             let output = path[i + 1];
@@ -281,7 +293,24 @@ impl Router {
             } else {
                 to
             };
+
+            let token_in_sender = previous_pair.unwrap_or(initial_token_in_sender);
+
             pair.swap(amount0_out, amount1_out, recipient, None);
+
+            self.env().emit_event(RouterSwapHop {
+                hop_index: i as u32,
+                is_last: i + 2 == path.len(),
+                router_caller,
+                route_recipient,
+                pair: pair_address,
+                input_token: input,
+                token_in_sender,
+                output_token: output,
+                token_out_recipient: recipient,
+            });
+
+            previous_pair = Some(pair_address);
         }
     }
 
@@ -311,7 +340,7 @@ impl Router {
         token_instance.transfer_from(&self.env().caller(), &pair_address, &amounts[0]);
 
         // Perform swap
-        self._swap(amounts.clone(), path, to);
+        self._swap(amounts.clone(), path, to, self.env().caller(), to);
 
         amounts
     }
@@ -342,7 +371,7 @@ impl Router {
         token_instance.transfer_from(&self.env().caller(), &pair_address, &amounts[0]);
 
         // Perform swap
-        self._swap(amounts.clone(), path, to);
+        self._swap(amounts.clone(), path, to, self.env().caller(), to);
 
         amounts
     }
@@ -385,7 +414,7 @@ impl Router {
         wcspr_instance.transfer(&pair_address, &amounts[0]);
 
         // Perform swap
-        self._swap(amounts.clone(), path, to);
+        self._swap(amounts.clone(), path, to, self.env().self_address(), to);
 
         amounts
     }
@@ -424,7 +453,13 @@ impl Router {
 
         // Perform swap to router (not to user!)
         let router_address = self.env().self_address();
-        self._swap(amounts.clone(), path, router_address);
+        self._swap(
+            amounts.clone(),
+            path,
+            router_address,
+            self.env().caller(),
+            to,
+        );
 
         // Withdraw WCSPR directly to user
         let mut wcspr_instance = self.wcspr_instance();
@@ -467,7 +502,13 @@ impl Router {
 
         // Perform swap to router (not to user!)
         let router_address = self.env().self_address();
-        self._swap(amounts.clone(), path, router_address);
+        self._swap(
+            amounts.clone(),
+            path,
+            router_address,
+            self.env().caller(),
+            to,
+        );
 
         // Withdraw WCSPR directly to user
         let mut wcspr_instance = self.wcspr_instance();
@@ -514,7 +555,7 @@ impl Router {
         wcspr_instance.transfer(&pair_address, &amounts[0]);
 
         // Perform swap
-        self._swap(amounts.clone(), path, to);
+        self._swap(amounts.clone(), path, to, self.env().self_address(), to);
 
         // Refund excess CSPR if any
         let excess_cspr = cspr_amount - amounts[0];
@@ -1374,6 +1415,21 @@ mod tests {
                 to: env.owner,
             }
         ));
+
+        assert!(env.odra_env.emitted_event(
+            &env.router,
+            crate::router::events::RouterSwapHop {
+                hop_index: 0,
+                is_last: true,
+                router_caller: env.owner,
+                route_recipient: env.owner,
+                pair: env.pair.address(),
+                input_token: env.token0.address(),
+                token_in_sender: env.owner,
+                output_token: env.token1.address(),
+                token_out_recipient: env.owner,
+            }
+        ));
     }
 
     #[test]
@@ -1597,6 +1653,21 @@ mod tests {
                 to: env.owner,
             }
         ));
+
+        assert!(env.odra_env.emitted_event(
+            &env.router,
+            crate::router::events::RouterSwapHop {
+                hop_index: 0,
+                is_last: true,
+                router_caller: env.owner,
+                route_recipient: env.owner,
+                pair: env.wcspr_pair.address(),
+                input_token: env.wcspr.address(),
+                token_in_sender: env.router.address(),
+                output_token: env.wcspr_partner.address(),
+                token_out_recipient: env.owner,
+            }
+        ));
     }
 
     #[test]
@@ -1726,6 +1797,21 @@ mod tests {
                 amount0_out,
                 amount1_out,
                 to: env.router.address(), // Swap goes to router, not user!
+            }
+        ));
+
+        assert!(env.odra_env.emitted_event(
+            &env.router,
+            crate::router::events::RouterSwapHop {
+                hop_index: 0,
+                is_last: true,
+                router_caller: env.owner,
+                route_recipient: env.owner,
+                pair: env.wcspr_pair.address(),
+                input_token: env.wcspr_partner.address(),
+                token_in_sender: env.owner,
+                output_token: env.wcspr.address(),
+                token_out_recipient: env.router.address(),
             }
         ));
     }
