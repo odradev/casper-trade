@@ -16,12 +16,12 @@ use crate::pair::PairContractRef;
 use crate::{
     factory::FactoryContractRef,
     router::errors::{LibraryError, RouterError},
-    router::events::RouterSwapHop,
+    router::events::RouterSwapRoute,
 };
 
 /// Router - Router contract for Casper Trade V2
 /// Based on UniswapV2Router02
-#[odra::module(events = [CSPRRefunded, RouterSwapHop], errors = RouterError)]
+#[odra::module(events = [CSPRRefunded, RouterSwapRoute], errors = RouterError)]
 pub struct Router {
     factory: Var<Address>,
     wcspr: Var<Address>,
@@ -274,6 +274,9 @@ impl Router {
     ) {
         let router_caller = self.env().caller();
         let mut previous_pair = None;
+        let mut pairs = Vec::new();
+        let mut token_in_senders = Vec::new();
+        let mut token_out_recipients = Vec::new();
 
         for i in 0..path.len() - 1 {
             let input = path[i];
@@ -298,20 +301,21 @@ impl Router {
 
             pair.swap(amount0_out, amount1_out, recipient, None);
 
-            self.env().emit_event(RouterSwapHop {
-                hop_index: i as u32,
-                is_last: i + 2 == path.len(),
-                router_caller,
-                route_recipient,
-                pair: pair_address,
-                input_token: input,
-                token_in_sender,
-                output_token: output,
-                token_out_recipient: recipient,
-            });
-
+            pairs.push(pair_address);
+            token_in_senders.push(token_in_sender);
+            token_out_recipients.push(recipient);
             previous_pair = Some(pair_address);
         }
+
+        self.env().emit_event(RouterSwapRoute {
+            router_caller,
+            route_recipient,
+            path,
+            amounts,
+            pairs,
+            token_in_senders,
+            token_out_recipients,
+        });
     }
 
     /// Swap exact tokens for tokens
@@ -1418,16 +1422,72 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.router,
-            crate::router::events::RouterSwapHop {
-                hop_index: 0,
-                is_last: true,
+            crate::router::events::RouterSwapRoute {
                 router_caller: env.owner,
                 route_recipient: env.owner,
-                pair: env.pair.address(),
-                input_token: env.token0.address(),
-                token_in_sender: env.owner,
-                output_token: env.token1.address(),
-                token_out_recipient: env.owner,
+                path: vec![env.token0.address(), env.token1.address()],
+                amounts: vec![swap_amount, expected_output_amount],
+                pairs: vec![env.pair.address()],
+                token_in_senders: vec![env.owner],
+                token_out_recipients: vec![env.owner],
+            }
+        ));
+    }
+
+    #[test]
+    fn test_swap_exact_tokens_for_tokens_multi_hop_events() {
+        let mut env = setup_router();
+
+        let token2 = SampleToken::deploy(
+            &env.odra_env,
+            SampleTokenInitArgs {
+                name: "Sample Token C".to_string(),
+                symbol: "STC".to_string(),
+                decimals: 18,
+                initial_supply: expand_to_18_decimals(10000),
+            },
+        );
+        let pair12_address = env
+            .factory
+            .create_pair(env.token1.address(), token2.address());
+        let mut pair12 = PairHostRef::new(pair12_address, env.odra_env.clone());
+
+        add_liquidity(
+            &mut env,
+            expand_to_18_decimals(5),
+            expand_to_18_decimals(10),
+        );
+
+        let mut pair12_token0 = Cep18HostRef::new(pair12.token0(), env.odra_env.clone());
+        let mut pair12_token1 = Cep18HostRef::new(pair12.token1(), env.odra_env.clone());
+        pair12_token0.transfer(&pair12.address(), &expand_to_18_decimals(10));
+        pair12_token1.transfer(&pair12.address(), &expand_to_18_decimals(20));
+        pair12.mint(env.owner);
+
+        let path = vec![env.token0.address(), env.token1.address(), token2.address()];
+        let swap_amount = expand_to_18_decimals(1);
+        let expected_amounts = env.router.get_amounts_out(swap_amount, path.clone());
+
+        env.token0.approve(&env.router.address(), &U256::MAX);
+        let amounts = env.router.swap_exact_tokens_for_tokens(
+            swap_amount,
+            U256::zero(),
+            path,
+            env.owner,
+            u64::MAX,
+        );
+
+        assert_eq!(amounts, expected_amounts);
+        assert!(env.odra_env.emitted_event(
+            &env.router,
+            crate::router::events::RouterSwapRoute {
+                router_caller: env.owner,
+                route_recipient: env.owner,
+                path: vec![env.token0.address(), env.token1.address(), token2.address()],
+                amounts: expected_amounts,
+                pairs: vec![env.pair.address(), pair12.address()],
+                token_in_senders: vec![env.owner, env.pair.address()],
+                token_out_recipients: vec![pair12.address(), env.owner],
             }
         ));
     }
@@ -1656,16 +1716,14 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.router,
-            crate::router::events::RouterSwapHop {
-                hop_index: 0,
-                is_last: true,
+            crate::router::events::RouterSwapRoute {
                 router_caller: env.owner,
                 route_recipient: env.owner,
-                pair: env.wcspr_pair.address(),
-                input_token: env.wcspr.address(),
-                token_in_sender: env.router.address(),
-                output_token: env.wcspr_partner.address(),
-                token_out_recipient: env.owner,
+                path: vec![env.wcspr.address(), env.wcspr_partner.address()],
+                amounts: vec![swap_amount, expected_output_amount],
+                pairs: vec![env.wcspr_pair.address()],
+                token_in_senders: vec![env.router.address()],
+                token_out_recipients: vec![env.owner],
             }
         ));
     }
@@ -1802,16 +1860,14 @@ mod tests {
 
         assert!(env.odra_env.emitted_event(
             &env.router,
-            crate::router::events::RouterSwapHop {
-                hop_index: 0,
-                is_last: true,
+            crate::router::events::RouterSwapRoute {
                 router_caller: env.owner,
                 route_recipient: env.owner,
-                pair: env.wcspr_pair.address(),
-                input_token: env.wcspr_partner.address(),
-                token_in_sender: env.owner,
-                output_token: env.wcspr.address(),
-                token_out_recipient: env.router.address(),
+                path: vec![env.wcspr_partner.address(), env.wcspr.address()],
+                amounts: vec![expected_swap_amount, output_amount],
+                pairs: vec![env.wcspr_pair.address()],
+                token_in_senders: vec![env.owner],
+                token_out_recipients: vec![env.router.address()],
             }
         ));
     }

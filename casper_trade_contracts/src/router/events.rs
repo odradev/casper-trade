@@ -1,19 +1,17 @@
-use odra::prelude::*;
+use odra::{casper_types::U256, prelude::*};
 
-/// Describes one hop of a swap route executed by the Router.
+/// Describes a complete swap route executed by the Router.
 ///
-/// `token_in_sender` and `token_out_recipient` describe the token flow
-/// orchestrated by the Router. They are not ownership claims over the Pair's
-/// complete balance delta.
+/// `token_in_senders` and `token_out_recipients` describe the token flow
+/// orchestrated by the Router for each pair in the route. They are not
+/// ownership claims over the Pairs' complete balance deltas.
 #[odra::event]
-pub struct RouterSwapHop {
-    pub hop_index: u32,
-    pub is_last: bool,
+pub struct RouterSwapRoute {
     pub router_caller: Address,
     pub route_recipient: Address,
-    pub pair: Address,
-    pub input_token: Address,
-    pub token_in_sender: Address,
-    pub output_token: Address,
-    pub token_out_recipient: Address,
+    pub path: Vec<Address>,
+    pub amounts: Vec<U256>,
+    pub pairs: Vec<Address>,
+    pub token_in_senders: Vec<Address>,
+    pub token_out_recipients: Vec<Address>,
 }
