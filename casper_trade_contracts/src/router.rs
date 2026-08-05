@@ -173,9 +173,13 @@ impl Router {
         let excess_cspr = cspr_amount - amount_cspr;
         if excess_cspr > U256::from(0) {
             let amount = ToU512::to_u512(excess_cspr);
-            self.env().transfer_tokens(&self.env().caller(), &amount);
+            let refund_recipient = self.env().caller();
+            self.env().transfer_tokens(&refund_recipient, &amount);
 
-            self.env().emit_event(CSPRRefunded { to, amount });
+            self.env().emit_event(CSPRRefunded {
+                to: refund_recipient,
+                amount,
+            });
         }
 
         (amount_token, amount_cspr, liquidity)
@@ -565,9 +569,13 @@ impl Router {
         let excess_cspr = cspr_amount - amounts[0];
         if excess_cspr > U256::zero() {
             let amount = excess_cspr.to_u512();
-            self.env().transfer_tokens(&self.env().caller(), &amount);
+            let refund_recipient = self.env().caller();
+            self.env().transfer_tokens(&refund_recipient, &amount);
 
-            self.env().emit_event(CSPRRefunded { to, amount });
+            self.env().emit_event(CSPRRefunded {
+                to: refund_recipient,
+                amount,
+            });
         }
 
         amounts
@@ -604,6 +612,9 @@ impl Router {
             self.env().revert(LibraryError::InsufficientOutputAmount);
         }
         if reserve_in.is_zero() || reserve_out.is_zero() {
+            self.env().revert(LibraryError::InsufficientLiquidity);
+        }
+        if amount_out >= reserve_out {
             self.env().revert(LibraryError::InsufficientLiquidity);
         }
         let numerator = reserve_in * amount_out * U256::from(1000);
@@ -908,6 +919,18 @@ mod tests {
         assert_eq!(
             env.router
                 .try_get_amount_in(U256::from(1), U256::from(100), U256::from(0))
+                .unwrap_err(),
+            LibraryError::InsufficientLiquidity.into()
+        );
+        assert_eq!(
+            env.router
+                .try_get_amount_in(U256::from(100), U256::from(100), U256::from(100))
+                .unwrap_err(),
+            LibraryError::InsufficientLiquidity.into()
+        );
+        assert_eq!(
+            env.router
+                .try_get_amount_in(U256::from(101), U256::from(100), U256::from(100))
                 .unwrap_err(),
             LibraryError::InsufficientLiquidity.into()
         );
@@ -2129,6 +2152,40 @@ mod tests {
                 amount0_out,
                 amount1_out,
                 to: env.owner,
+            }
+        ));
+    }
+
+    #[test]
+    fn test_swap_cspr_for_exact_tokens_refund_event_uses_caller() {
+        let mut env = setup_router();
+
+        let wcspr_partner_amount = expand_to_18_decimals(10);
+        let cspr_amount = expand_to_18_decimals(5);
+        let expected_swap_amount = U256::from_dec_str("557227237267357629").unwrap();
+        let output_amount = expand_to_18_decimals(1);
+        let refund_amount = U256::from(1000);
+
+        env.wcspr_partner
+            .transfer(&env.wcspr_pair.address(), &wcspr_partner_amount);
+        env.wcspr.with_tokens(cspr_amount.to_u512()).deposit();
+        env.wcspr.transfer(&env.wcspr_pair.address(), &cspr_amount);
+        env.wcspr_pair.mint(env.owner);
+
+        env.router
+            .with_tokens((expected_swap_amount + refund_amount).to_u512())
+            .swap_cspr_for_exact_tokens(
+                output_amount,
+                vec![env.wcspr.address(), env.wcspr_partner.address()],
+                env.alice,
+                u64::MAX,
+            );
+
+        assert!(env.odra_env.emitted_event(
+            &env.router,
+            crate::pair::events::CSPRRefunded {
+                to: env.owner,
+                amount: refund_amount.to_u512(),
             }
         ));
     }

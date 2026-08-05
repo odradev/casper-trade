@@ -1,6 +1,6 @@
 {
   "casper_contract_schema_version": 1,
-  "toolchain": "rustc 1.85.0-nightly (d117b7f21 2024-12-31)",
+  "toolchain": "rustc 1.94.0-nightly (8d670b93d 2025-12-31)",
   "authors": [],
   "repository": null,
   "homepage": null,
@@ -21,6 +21,59 @@
             "name": "amount",
             "description": null,
             "ty": "U512"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "RouterSwapRoute",
+        "description": null,
+        "members": [
+          {
+            "name": "router_caller",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "route_recipient",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "path",
+            "description": null,
+            "ty": {
+              "List": "Key"
+            }
+          },
+          {
+            "name": "amounts",
+            "description": null,
+            "ty": {
+              "List": "U256"
+            }
+          },
+          {
+            "name": "pairs",
+            "description": null,
+            "ty": {
+              "List": "Key"
+            }
+          },
+          {
+            "name": "token_in_senders",
+            "description": null,
+            "ty": {
+              "List": "Key"
+            }
+          },
+          {
+            "name": "token_out_recipients",
+            "description": null,
+            "ty": {
+              "List": "Key"
+            }
           }
         ]
       }
@@ -743,6 +796,10 @@
     {
       "name": "CSPRRefunded",
       "ty": "CSPRRefunded"
+    },
+    {
+      "name": "RouterSwapRoute",
+      "ty": "RouterSwapRoute"
     }
   ],
   "call": {
