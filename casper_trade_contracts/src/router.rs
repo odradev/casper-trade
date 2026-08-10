@@ -1,4 +1,5 @@
 pub mod errors;
+pub mod events;
 
 use odra::{
     casper_types::U256,
@@ -15,11 +16,12 @@ use crate::pair::PairContractRef;
 use crate::{
     factory::FactoryContractRef,
     router::errors::{LibraryError, RouterError},
+    router::events::RouterSwapRoute,
 };
 
 /// Router - Router contract for Casper Trade V2
 /// Based on UniswapV2Router02
-#[odra::module(events = [CSPRRefunded], errors = RouterError)]
+#[odra::module(events = [CSPRRefunded, RouterSwapRoute], errors = RouterError)]
 pub struct Router {
     factory: Var<Address>,
     wcspr: Var<Address>,
@@ -119,9 +121,10 @@ impl Router {
 
         let mut token_a_instance = Cep18ContractRef::new(self.env(), token_a);
         let mut token_b_instance = Cep18ContractRef::new(self.env(), token_b);
+        let caller = self.env().caller();
 
-        token_a_instance.transfer_from(&self.env().caller(), pair_instance.address(), &amount_a);
-        token_b_instance.transfer_from(&self.env().caller(), pair_instance.address(), &amount_b);
+        token_a_instance.transfer_from(&caller, pair_instance.address(), &amount_a);
+        token_b_instance.transfer_from(&caller, pair_instance.address(), &amount_b);
         let liquidity = pair_instance.mint(to);
 
         (amount_a, amount_b, liquidity)
@@ -144,6 +147,7 @@ impl Router {
 
         let wcspr = self.wcspr();
         let cspr_amount = self.env().attached_value().to_u256().unwrap_or_revert(self);
+        let caller = self.env().caller();
 
         let (amount_token, amount_cspr, mut pair_instance) = self._add_liquidity(
             token,
@@ -156,7 +160,7 @@ impl Router {
 
         // Transfer token from caller to pair
         let mut token_instance = Cep18ContractRef::new(self.env(), token);
-        token_instance.transfer_from(&self.env().caller(), pair_instance.address(), &amount_token);
+        token_instance.transfer_from(&caller, pair_instance.address(), &amount_token);
 
         // Wrap CSPR and transfer to pair
         let mut wcspr_instance = self.wcspr_instance();
@@ -171,9 +175,9 @@ impl Router {
         let excess_cspr = cspr_amount - amount_cspr;
         if excess_cspr > U256::from(0) {
             let amount = ToU512::to_u512(excess_cspr);
-            self.env().transfer_tokens(&self.env().caller(), &amount);
+            self.env().transfer_tokens(&caller, &amount);
 
-            self.env().emit_event(CSPRRefunded { to, amount });
+            self.env().emit_event(CSPRRefunded { to: caller, amount });
         }
 
         (amount_token, amount_cspr, liquidity)
@@ -262,7 +266,20 @@ impl Router {
     // **** SWAP ****
 
     /// Internal swap function - requires the initial amount to have already been sent to the first pair
-    fn _swap(&mut self, amounts: Vec<U256>, path: Vec<Address>, to: Address) {
+    fn _swap(
+        &mut self,
+        amounts: Vec<U256>,
+        path: Vec<Address>,
+        to: Address,
+        initial_token_in_sender: Address,
+        route_recipient: Address,
+    ) {
+        let router_caller = self.env().caller();
+        let mut previous_pair = None;
+        let mut pairs = Vec::new();
+        let mut token_in_senders = Vec::new();
+        let mut token_out_recipients = Vec::new();
+
         for i in 0..path.len() - 1 {
             let input = path[i];
             let output = path[i + 1];
@@ -281,8 +298,26 @@ impl Router {
             } else {
                 to
             };
+
+            let token_in_sender = previous_pair.unwrap_or(initial_token_in_sender);
+
             pair.swap(amount0_out, amount1_out, recipient, None);
+
+            pairs.push(pair_address);
+            token_in_senders.push(token_in_sender);
+            token_out_recipients.push(recipient);
+            previous_pair = Some(pair_address);
         }
+
+        self.env().emit_event(RouterSwapRoute {
+            router_caller,
+            route_recipient,
+            path,
+            amounts,
+            pairs,
+            token_in_senders,
+            token_out_recipients,
+        });
     }
 
     /// Swap exact tokens for tokens
@@ -308,10 +343,11 @@ impl Router {
         // Transfer input tokens to first pair
         let pair_address = self.pair_for(path[0], path[1]);
         let mut token_instance = Cep18ContractRef::new(self.env(), path[0]);
-        token_instance.transfer_from(&self.env().caller(), &pair_address, &amounts[0]);
+        let caller = self.env().caller();
+        token_instance.transfer_from(&caller, &pair_address, &amounts[0]);
 
         // Perform swap
-        self._swap(amounts.clone(), path, to);
+        self._swap(amounts.clone(), path, to, caller, to);
 
         amounts
     }
@@ -339,10 +375,11 @@ impl Router {
         // Transfer input tokens to first pair
         let pair_address = self.pair_for(path[0], path[1]);
         let mut token_instance = Cep18ContractRef::new(self.env(), path[0]);
-        token_instance.transfer_from(&self.env().caller(), &pair_address, &amounts[0]);
+        let caller = self.env().caller();
+        token_instance.transfer_from(&caller, &pair_address, &amounts[0]);
 
         // Perform swap
-        self._swap(amounts.clone(), path, to);
+        self._swap(amounts.clone(), path, to, caller, to);
 
         amounts
     }
@@ -385,7 +422,7 @@ impl Router {
         wcspr_instance.transfer(&pair_address, &amounts[0]);
 
         // Perform swap
-        self._swap(amounts.clone(), path, to);
+        self._swap(amounts.clone(), path, to, self.env().self_address(), to);
 
         amounts
     }
@@ -420,11 +457,12 @@ impl Router {
         // Transfer input tokens to first pair
         let pair_address = self.pair_for(path[0], path[1]);
         let mut token_instance = Cep18ContractRef::new(self.env(), path[0]);
-        token_instance.transfer_from(&self.env().caller(), &pair_address, &amounts[0]);
+        let caller = self.env().caller();
+        token_instance.transfer_from(&caller, &pair_address, &amounts[0]);
 
         // Perform swap to router (not to user!)
         let router_address = self.env().self_address();
-        self._swap(amounts.clone(), path, router_address);
+        self._swap(amounts.clone(), path, router_address, caller, to);
 
         // Withdraw WCSPR directly to user
         let mut wcspr_instance = self.wcspr_instance();
@@ -463,11 +501,12 @@ impl Router {
         // Transfer input tokens to first pair
         let pair_address = self.pair_for(path[0], path[1]);
         let mut token_instance = Cep18ContractRef::new(self.env(), path[0]);
-        token_instance.transfer_from(&self.env().caller(), &pair_address, &amounts[0]);
+        let caller = self.env().caller();
+        token_instance.transfer_from(&caller, &pair_address, &amounts[0]);
 
         // Perform swap to router (not to user!)
         let router_address = self.env().self_address();
-        self._swap(amounts.clone(), path, router_address);
+        self._swap(amounts.clone(), path, router_address, caller, to);
 
         // Withdraw WCSPR directly to user
         let mut wcspr_instance = self.wcspr_instance();
@@ -514,15 +553,19 @@ impl Router {
         wcspr_instance.transfer(&pair_address, &amounts[0]);
 
         // Perform swap
-        self._swap(amounts.clone(), path, to);
+        self._swap(amounts.clone(), path, to, self.env().self_address(), to);
 
         // Refund excess CSPR if any
         let excess_cspr = cspr_amount - amounts[0];
         if excess_cspr > U256::zero() {
             let amount = excess_cspr.to_u512();
-            self.env().transfer_tokens(&self.env().caller(), &amount);
+            let refund_recipient = self.env().caller();
+            self.env().transfer_tokens(&refund_recipient, &amount);
 
-            self.env().emit_event(CSPRRefunded { to, amount });
+            self.env().emit_event(CSPRRefunded {
+                to: refund_recipient,
+                amount,
+            });
         }
 
         amounts
@@ -559,6 +602,9 @@ impl Router {
             self.env().revert(LibraryError::InsufficientOutputAmount);
         }
         if reserve_in.is_zero() || reserve_out.is_zero() {
+            self.env().revert(LibraryError::InsufficientLiquidity);
+        }
+        if amount_out >= reserve_out {
             self.env().revert(LibraryError::InsufficientLiquidity);
         }
         let numerator = reserve_in * amount_out * U256::from(1000);
@@ -863,6 +909,18 @@ mod tests {
         assert_eq!(
             env.router
                 .try_get_amount_in(U256::from(1), U256::from(100), U256::from(0))
+                .unwrap_err(),
+            LibraryError::InsufficientLiquidity.into()
+        );
+        assert_eq!(
+            env.router
+                .try_get_amount_in(U256::from(100), U256::from(100), U256::from(100))
+                .unwrap_err(),
+            LibraryError::InsufficientLiquidity.into()
+        );
+        assert_eq!(
+            env.router
+                .try_get_amount_in(U256::from(101), U256::from(100), U256::from(100))
                 .unwrap_err(),
             LibraryError::InsufficientLiquidity.into()
         );
@@ -1374,6 +1432,77 @@ mod tests {
                 to: env.owner,
             }
         ));
+
+        assert!(env.odra_env.emitted_event(
+            &env.router,
+            crate::router::events::RouterSwapRoute {
+                router_caller: env.owner,
+                route_recipient: env.owner,
+                path: vec![env.token0.address(), env.token1.address()],
+                amounts: vec![swap_amount, expected_output_amount],
+                pairs: vec![env.pair.address()],
+                token_in_senders: vec![env.owner],
+                token_out_recipients: vec![env.owner],
+            }
+        ));
+    }
+
+    #[test]
+    fn test_swap_exact_tokens_for_tokens_multi_hop_events() {
+        let mut env = setup_router();
+
+        let token2 = SampleToken::deploy(
+            &env.odra_env,
+            SampleTokenInitArgs {
+                name: "Sample Token C".to_string(),
+                symbol: "STC".to_string(),
+                decimals: 18,
+                initial_supply: expand_to_18_decimals(10000),
+            },
+        );
+        let pair12_address = env
+            .factory
+            .create_pair(env.token1.address(), token2.address());
+        let mut pair12 = PairHostRef::new(pair12_address, env.odra_env.clone());
+
+        add_liquidity(
+            &mut env,
+            expand_to_18_decimals(5),
+            expand_to_18_decimals(10),
+        );
+
+        let mut pair12_token0 = Cep18HostRef::new(pair12.token0(), env.odra_env.clone());
+        let mut pair12_token1 = Cep18HostRef::new(pair12.token1(), env.odra_env.clone());
+        pair12_token0.transfer(&pair12.address(), &expand_to_18_decimals(10));
+        pair12_token1.transfer(&pair12.address(), &expand_to_18_decimals(20));
+        pair12.mint(env.owner);
+
+        let path = vec![env.token0.address(), env.token1.address(), token2.address()];
+        let swap_amount = expand_to_18_decimals(1);
+        let expected_amounts = env.router.get_amounts_out(swap_amount, path.clone());
+
+        env.token0.approve(&env.router.address(), &U256::MAX);
+        let amounts = env.router.swap_exact_tokens_for_tokens(
+            swap_amount,
+            U256::zero(),
+            path,
+            env.owner,
+            u64::MAX,
+        );
+
+        assert_eq!(amounts, expected_amounts);
+        assert!(env.odra_env.emitted_event(
+            &env.router,
+            crate::router::events::RouterSwapRoute {
+                router_caller: env.owner,
+                route_recipient: env.owner,
+                path: vec![env.token0.address(), env.token1.address(), token2.address()],
+                amounts: expected_amounts,
+                pairs: vec![env.pair.address(), pair12.address()],
+                token_in_senders: vec![env.owner, env.pair.address()],
+                token_out_recipients: vec![pair12.address(), env.owner],
+            }
+        ));
     }
 
     #[test]
@@ -1597,6 +1726,19 @@ mod tests {
                 to: env.owner,
             }
         ));
+
+        assert!(env.odra_env.emitted_event(
+            &env.router,
+            crate::router::events::RouterSwapRoute {
+                router_caller: env.owner,
+                route_recipient: env.owner,
+                path: vec![env.wcspr.address(), env.wcspr_partner.address()],
+                amounts: vec![swap_amount, expected_output_amount],
+                pairs: vec![env.wcspr_pair.address()],
+                token_in_senders: vec![env.router.address()],
+                token_out_recipients: vec![env.owner],
+            }
+        ));
     }
 
     #[test]
@@ -1726,6 +1868,19 @@ mod tests {
                 amount0_out,
                 amount1_out,
                 to: env.router.address(), // Swap goes to router, not user!
+            }
+        ));
+
+        assert!(env.odra_env.emitted_event(
+            &env.router,
+            crate::router::events::RouterSwapRoute {
+                router_caller: env.owner,
+                route_recipient: env.owner,
+                path: vec![env.wcspr_partner.address(), env.wcspr.address()],
+                amounts: vec![expected_swap_amount, output_amount],
+                pairs: vec![env.wcspr_pair.address()],
+                token_in_senders: vec![env.owner],
+                token_out_recipients: vec![env.router.address()],
             }
         ));
     }
@@ -1987,6 +2142,40 @@ mod tests {
                 amount0_out,
                 amount1_out,
                 to: env.owner,
+            }
+        ));
+    }
+
+    #[test]
+    fn test_swap_cspr_for_exact_tokens_refund_event_uses_caller() {
+        let mut env = setup_router();
+
+        let wcspr_partner_amount = expand_to_18_decimals(10);
+        let cspr_amount = expand_to_18_decimals(5);
+        let expected_swap_amount = U256::from_dec_str("557227237267357629").unwrap();
+        let output_amount = expand_to_18_decimals(1);
+        let refund_amount = U256::from(1000);
+
+        env.wcspr_partner
+            .transfer(&env.wcspr_pair.address(), &wcspr_partner_amount);
+        env.wcspr.with_tokens(cspr_amount.to_u512()).deposit();
+        env.wcspr.transfer(&env.wcspr_pair.address(), &cspr_amount);
+        env.wcspr_pair.mint(env.owner);
+
+        env.router
+            .with_tokens((expected_swap_amount + refund_amount).to_u512())
+            .swap_cspr_for_exact_tokens(
+                output_amount,
+                vec![env.wcspr.address(), env.wcspr_partner.address()],
+                env.alice,
+                u64::MAX,
+            );
+
+        assert!(env.odra_env.emitted_event(
+            &env.router,
+            crate::pair::events::CSPRRefunded {
+                to: env.owner,
+                amount: refund_amount.to_u512(),
             }
         ));
     }

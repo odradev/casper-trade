@@ -19,6 +19,70 @@
           "is_required": true
         }
       ]
+    },
+    {
+      "name": "RouterSwapRoute",
+      "args": [
+        {
+          "name": "router_caller",
+          "ty": "Key",
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        },
+        {
+          "name": "route_recipient",
+          "ty": "Key",
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        },
+        {
+          "name": "path",
+          "ty": {
+            "List": "Key"
+          },
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        },
+        {
+          "name": "amounts",
+          "ty": {
+            "List": "U256"
+          },
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        },
+        {
+          "name": "pairs",
+          "ty": {
+            "List": "Key"
+          },
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        },
+        {
+          "name": "token_in_senders",
+          "ty": {
+            "List": "Key"
+          },
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        },
+        {
+          "name": "token_out_recipients",
+          "ty": {
+            "List": "Key"
+          },
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        }
+      ]
     }
   ],
   "entrypoints": [
