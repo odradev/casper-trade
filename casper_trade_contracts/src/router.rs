@@ -121,9 +121,10 @@ impl Router {
 
         let mut token_a_instance = Cep18ContractRef::new(self.env(), token_a);
         let mut token_b_instance = Cep18ContractRef::new(self.env(), token_b);
+        let caller = self.env().caller();
 
-        token_a_instance.transfer_from(&self.env().caller(), pair_instance.address(), &amount_a);
-        token_b_instance.transfer_from(&self.env().caller(), pair_instance.address(), &amount_b);
+        token_a_instance.transfer_from(&caller, pair_instance.address(), &amount_a);
+        token_b_instance.transfer_from(&caller, pair_instance.address(), &amount_b);
         let liquidity = pair_instance.mint(to);
 
         (amount_a, amount_b, liquidity)
@@ -146,6 +147,7 @@ impl Router {
 
         let wcspr = self.wcspr();
         let cspr_amount = self.env().attached_value().to_u256().unwrap_or_revert(self);
+        let caller = self.env().caller();
 
         let (amount_token, amount_cspr, mut pair_instance) = self._add_liquidity(
             token,
@@ -158,7 +160,7 @@ impl Router {
 
         // Transfer token from caller to pair
         let mut token_instance = Cep18ContractRef::new(self.env(), token);
-        token_instance.transfer_from(&self.env().caller(), pair_instance.address(), &amount_token);
+        token_instance.transfer_from(&caller, pair_instance.address(), &amount_token);
 
         // Wrap CSPR and transfer to pair
         let mut wcspr_instance = self.wcspr_instance();
@@ -173,13 +175,9 @@ impl Router {
         let excess_cspr = cspr_amount - amount_cspr;
         if excess_cspr > U256::from(0) {
             let amount = ToU512::to_u512(excess_cspr);
-            let refund_recipient = self.env().caller();
-            self.env().transfer_tokens(&refund_recipient, &amount);
+            self.env().transfer_tokens(&caller, &amount);
 
-            self.env().emit_event(CSPRRefunded {
-                to: refund_recipient,
-                amount,
-            });
+            self.env().emit_event(CSPRRefunded { to: caller, amount });
         }
 
         (amount_token, amount_cspr, liquidity)
@@ -345,10 +343,11 @@ impl Router {
         // Transfer input tokens to first pair
         let pair_address = self.pair_for(path[0], path[1]);
         let mut token_instance = Cep18ContractRef::new(self.env(), path[0]);
-        token_instance.transfer_from(&self.env().caller(), &pair_address, &amounts[0]);
+        let caller = self.env().caller();
+        token_instance.transfer_from(&caller, &pair_address, &amounts[0]);
 
         // Perform swap
-        self._swap(amounts.clone(), path, to, self.env().caller(), to);
+        self._swap(amounts.clone(), path, to, caller, to);
 
         amounts
     }
@@ -376,10 +375,11 @@ impl Router {
         // Transfer input tokens to first pair
         let pair_address = self.pair_for(path[0], path[1]);
         let mut token_instance = Cep18ContractRef::new(self.env(), path[0]);
-        token_instance.transfer_from(&self.env().caller(), &pair_address, &amounts[0]);
+        let caller = self.env().caller();
+        token_instance.transfer_from(&caller, &pair_address, &amounts[0]);
 
         // Perform swap
-        self._swap(amounts.clone(), path, to, self.env().caller(), to);
+        self._swap(amounts.clone(), path, to, caller, to);
 
         amounts
     }
@@ -457,17 +457,12 @@ impl Router {
         // Transfer input tokens to first pair
         let pair_address = self.pair_for(path[0], path[1]);
         let mut token_instance = Cep18ContractRef::new(self.env(), path[0]);
-        token_instance.transfer_from(&self.env().caller(), &pair_address, &amounts[0]);
+        let caller = self.env().caller();
+        token_instance.transfer_from(&caller, &pair_address, &amounts[0]);
 
         // Perform swap to router (not to user!)
         let router_address = self.env().self_address();
-        self._swap(
-            amounts.clone(),
-            path,
-            router_address,
-            self.env().caller(),
-            to,
-        );
+        self._swap(amounts.clone(), path, router_address, caller, to);
 
         // Withdraw WCSPR directly to user
         let mut wcspr_instance = self.wcspr_instance();
@@ -506,17 +501,12 @@ impl Router {
         // Transfer input tokens to first pair
         let pair_address = self.pair_for(path[0], path[1]);
         let mut token_instance = Cep18ContractRef::new(self.env(), path[0]);
-        token_instance.transfer_from(&self.env().caller(), &pair_address, &amounts[0]);
+        let caller = self.env().caller();
+        token_instance.transfer_from(&caller, &pair_address, &amounts[0]);
 
         // Perform swap to router (not to user!)
         let router_address = self.env().self_address();
-        self._swap(
-            amounts.clone(),
-            path,
-            router_address,
-            self.env().caller(),
-            to,
-        );
+        self._swap(amounts.clone(), path, router_address, caller, to);
 
         // Withdraw WCSPR directly to user
         let mut wcspr_instance = self.wcspr_instance();
