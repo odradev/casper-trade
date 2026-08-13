@@ -16,7 +16,7 @@ use odra_modules::wrapped_native::WrappedNativeToken;
 mod scenarios;
 use scenarios::{
     AddLiquidity, AddLiquidityCSPR, AddWCSPR, DeployWcspr, SetupPair, SetupSamples, SwapTokens,
-    UpgradeFactory, UpgradePairs,
+    UpgradeFactory, UpgradePairs, UpgradeRouter,
 };
 
 /// Deploys all Casper Trade contracts
@@ -110,6 +110,7 @@ pub fn main() {
         .scenario(SwapTokens)
         .scenario(UpgradePairs)
         .scenario(UpgradeFactory)
+        .scenario(UpgradeRouter)
         .scenario(AddWCSPR)
         .scenario(DeployWcspr)
         .scenario(SetupSamples)

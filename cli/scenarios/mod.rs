@@ -7,6 +7,7 @@ pub mod setup_samples;
 pub mod swap_tokens;
 mod upgrade_factory;
 pub mod upgrade_pairs;
+mod upgrade_router;
 pub mod utils;
 
 pub use add_liquidity::AddLiquidity;
@@ -18,3 +19,4 @@ pub use setup_samples::SetupSamples;
 pub use swap_tokens::SwapTokens;
 pub use upgrade_factory::UpgradeFactory;
 pub use upgrade_pairs::UpgradePairs;
+pub use upgrade_router::UpgradeRouter;

@@ -63,7 +63,42 @@ rm -f resources/contracts.toml
 cargo run --bin casper_trade_cli -- deploy
 ```
 
-**Important:** The CLI caches deployed contract addresses in `resources/contracts.toml`. When switching between environments (testnet ↔ nctl), always clear this file first to avoid address conflicts.
+**Important:** The CLI stores deployed contract addresses in a network-specific file under `resources/`, for example `resources/casper-net-1-contracts.toml` for NCTL. Use the address file that belongs to the target network.
+
+### Upgrade Contracts
+
+The CLI provides upgrade scenarios for Router, PairFactory, and Pair contracts recorded in the target network's contract address file under `resources/`.
+
+Build the current WASM and run an upgrade on the configured network:
+
+```bash
+just upgrade Router
+just upgrade Factory
+just upgrade Pairs --token_pairs SampleTokenA:SampleTokenB
+```
+
+For the local NCTL network:
+
+```bash
+just upgrade-on-nctl Router
+just upgrade-on-nctl Factory
+just upgrade-on-nctl Pairs --token_pairs SampleTokenA:SampleTokenB
+```
+
+Available targets:
+
+- `Router` runs `UpgradeRouter` and upgrades the existing Router without calling `init` again;
+- `Factory` runs `UpgradeFactory` and upgrades PairFactory;
+- `Pairs` runs `UpgradePairs` for the pairs listed in `--token_pairs`. Multiple pairs can be separated by commas.
+
+Before running an upgrade:
+
+- configure the Odra environment for the target network;
+- make sure the network-specific contract address file contains the existing contracts for that network;
+- use a signing key with permission to upgrade the relevant contract package;
+- do not remove that address file, as the scenario needs it to locate the existing contract package.
+
+The upgrade keeps the existing contract package and state and adds a new contract version.
 
 ### Quick Start: Add Liquidity
 
@@ -344,4 +379,3 @@ just cli-on-nctl named-contract SampleTokenA approve \
 ## License
 
 See the main project LICENSE file.
-

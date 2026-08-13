@@ -107,6 +107,9 @@ just cli deploy
 
 # Example: Get help
 just cli --help
+
+# Build and upgrade an existing contract
+just upgrade Router
 ```
 
 #### Local Casper Node Testing
@@ -119,6 +122,9 @@ just cli-on-nctl <arguments>
 
 # Example: Deploy to local node
 just cli-on-nctl deploy
+
+# Build and upgrade a contract deployed on the local node
+just upgrade-on-nctl Router
 ```
 
 ## Building
@@ -130,6 +136,24 @@ cargo odra build -b casper
 ```
 
 The compiled WASM files will be placed in the `wasm/` directory.
+
+## Upgrading Contracts
+
+Build the latest WASM and upgrade a deployed contract with:
+
+```bash
+just upgrade Router
+just upgrade Factory
+just upgrade Pairs --token_pairs SampleTokenA:SampleTokenB
+```
+
+For the local NCTL network:
+
+```bash
+just upgrade-on-nctl Router
+```
+
+See [CLI upgrade documentation](cli/README.md#upgrade-contracts) for available targets, NCTL usage, contract address files, and upgrade requirements.
 
 ## CLI Tool
 
