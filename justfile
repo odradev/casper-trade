@@ -23,6 +23,15 @@ run-nctl:
 cli *ARGS:
     cargo run --bin casper_trade_cli -- {{ARGS}}
 
+# Run an upgrade scenario for contracts recorded for the configured network.
+# Supported targets: Router, Factory, Pairs.
+upgrade target *args: build
+    cargo run --bin casper_trade_cli -- scenario Upgrade{{target}} {{args}}
+
+# Run an upgrade scenario on the local NCTL network.
+upgrade-on-nctl target *args: build
+    just cli-on-nctl scenario Upgrade{{target}} {{args}}
+
 cli-on-nctl *args="":
     set shell := bash
     mkdir -p .node-keys
@@ -32,4 +41,3 @@ cli-on-nctl *args="":
     # Run the command
     ODRA_CASPER_LIVENET_SECRET_KEY_PATH=.node-keys/secret_key.pem ODRA_CASPER_LIVENET_NODE_ADDRESS=http://localhost:11101 ODRA_CASPER_LIVENET_EVENTS_URL=http://localhost:18101/events ODRA_CASPER_LIVENET_CHAIN_NAME=casper-net-1 ODRA_CASPER_LIVENET_KEY_1=.node-keys/secret_key_1.pem  cargo run --bin casper_trade_cli -- {{args}}
     rm -rf .node-keys
-
