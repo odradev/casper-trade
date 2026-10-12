@@ -1,6 +1,6 @@
 {
   "casper_contract_schema_version": 1,
-  "toolchain": "rustc 1.85.0-nightly (d117b7f21 2024-12-31)",
+  "toolchain": "rustc 1.94.0-nightly (8d670b93d 2025-12-31)",
   "authors": [],
   "repository": null,
   "homepage": null,
@@ -21,6 +21,26 @@
             "name": "amount",
             "description": null,
             "ty": "U256"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "DappRegistryChanged",
+        "description": null,
+        "members": [
+          {
+            "name": "previous_registry",
+            "description": null,
+            "ty": {
+              "Option": "Key"
+            }
+          },
+          {
+            "name": "new_registry",
+            "description": null,
+            "ty": "Key"
           }
         ]
       }
@@ -342,9 +362,39 @@
   ],
   "errors": [
     {
+      "name": "CallerNotDappFactory",
+      "description": "The caller is not a registered dapp factory.",
+      "discriminant": 22004
+    },
+    {
+      "name": "CannotRemoveDappRegistry",
+      "description": "The dapp registry cannot remove itself.",
+      "discriminant": 22006
+    },
+    {
       "name": "CannotTargetSelfUser",
       "description": "The user cannot target themselves.",
       "discriminant": 60003
+    },
+    {
+      "name": "DappContractAlreadyRegistered",
+      "description": "The contract is already registered. The registry itself counts as registered.",
+      "discriminant": 22001
+    },
+    {
+      "name": "DappContractNotRegistered",
+      "description": "The contract is not registered.",
+      "discriminant": 22002
+    },
+    {
+      "name": "DappRegistryMismatch",
+      "description": "The contract points to a different dapp registry.",
+      "discriminant": 22003
+    },
+    {
+      "name": "DappRegistryNotSet",
+      "description": "The dapp registry has not been set.",
+      "discriminant": 22005
     },
     {
       "name": "Forbidden",
@@ -402,6 +452,11 @@
       "discriminant": 20001
     },
     {
+      "name": "NotAContract",
+      "description": "The address is not a contract address.",
+      "discriminant": 22000
+    },
+    {
       "name": "NotInitialized",
       "description": "The pair is not properly initialized.",
       "discriminant": 20003
@@ -413,6 +468,28 @@
     }
   ],
   "entry_points": [
+    {
+      "name": "initialize",
+      "description": "",
+      "is_mutable": true,
+      "arguments": [
+        {
+          "name": "token0",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        },
+        {
+          "name": "token1",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
     {
       "name": "mint",
       "description": "",
@@ -741,12 +818,25 @@
       "return_ty": "String",
       "is_contract_context": true,
       "access": "public"
+    },
+    {
+      "name": "get_dapp_registry",
+      "description": "Delegated. See `self.dapp.get_dapp_registry()` for details.",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "Key",
+      "is_contract_context": true,
+      "access": "public"
     }
   ],
   "events": [
     {
       "name": "Burn",
       "ty": "Burn"
+    },
+    {
+      "name": "DappRegistryChanged",
+      "ty": "DappRegistryChanged"
     },
     {
       "name": "DecreaseAllowance",
@@ -843,6 +933,12 @@
       },
       {
         "name": "token1",
+        "description": null,
+        "ty": "Key",
+        "optional": false
+      },
+      {
+        "name": "dapp_registry",
         "description": null,
         "ty": "Key",
         "optional": false

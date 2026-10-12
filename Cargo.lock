@@ -876,10 +876,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "dotenv"
-version = "0.15.0"
+name = "dotenvy"
+version = "0.15.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
+checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 
 [[package]]
 name = "downcast-rs"
@@ -2027,9 +2027,8 @@ dependencies = [
 
 [[package]]
 name = "odra"
-version = "2.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79960341b1cc279adeb433cbfb83638f6b62d3d0bb5a8e4ddb17345253b54054"
+version = "2.10.0"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
 dependencies = [
  "odra-casper-wasm-env",
  "odra-core",
@@ -2039,9 +2038,8 @@ dependencies = [
 
 [[package]]
 name = "odra-build"
-version = "2.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0545a3f910b557436245227e09b38d3ac52bd6bcc4135ce031c0e791e7029cb7"
+version = "2.10.0"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
 dependencies = [
  "serde",
  "serde_json",
@@ -2049,9 +2047,8 @@ dependencies = [
 
 [[package]]
 name = "odra-casper-livenet-env"
-version = "2.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a95fe10f6ebba079524edbd1eeb0011fd8839f55625225d67bdca4d81753e098"
+version = "2.10.0"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
 dependencies = [
  "anyhow",
  "blake2 0.10.6",
@@ -2065,15 +2062,14 @@ dependencies = [
 
 [[package]]
 name = "odra-casper-rpc-client"
-version = "2.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e672f808c9de6bb45fdfe1f324521abfdc049066bf85932d5b9a3d9e1300701"
+version = "2.10.0"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
 dependencies = [
  "base16",
  "bytes",
  "casper-client",
  "casper-types",
- "dotenv",
+ "dotenvy",
  "futures-util",
  "itertools 0.14.0",
  "odra-core",
@@ -2090,9 +2086,8 @@ dependencies = [
 
 [[package]]
 name = "odra-casper-test-vm"
-version = "2.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08fb4c14ef6e08ea58d554cbb169f740ff3dcec19bed6823d2d9121bdcf464a7"
+version = "2.10.0"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
 dependencies = [
  "casper-contract",
  "casper-engine-test-support",
@@ -2103,9 +2098,8 @@ dependencies = [
 
 [[package]]
 name = "odra-casper-wasm-env"
-version = "2.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f786b5c9cef0be3b6594f294348629e42845f3eaf0e966bfc808a79e4ec7529"
+version = "2.10.0"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
 dependencies = [
  "casper-contract",
  "ink_allocator",
@@ -2115,9 +2109,8 @@ dependencies = [
 
 [[package]]
 name = "odra-cli"
-version = "2.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ceb5d5bec9e510ddd958db6f027a210018ede9be5d46d667633a2ba92c133587"
+version = "2.10.0"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2141,9 +2134,8 @@ dependencies = [
 
 [[package]]
 name = "odra-core"
-version = "2.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62c0916de173840d88f33b09c13073f0e935a4b7385764d6cdd15d21a1ec33a9"
+version = "2.10.0"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
 dependencies = [
  "anyhow",
  "casper-event-standard",
@@ -2157,9 +2149,8 @@ dependencies = [
 
 [[package]]
 name = "odra-macros"
-version = "2.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26eca968407254024b76215f1b86e30ca349b00405d40977bce886d38b623b8c"
+version = "2.10.0"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
 dependencies = [
  "convert_case 0.6.0",
  "derive-try-from-ref",
@@ -2172,9 +2163,8 @@ dependencies = [
 
 [[package]]
 name = "odra-modules"
-version = "2.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4eca661c8dd9e24eee35de0c82b35bb7109dc17f625e9259979b0ffb2ed2b330"
+version = "2.10.0"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
 dependencies = [
  "base64 0.22.1",
  "odra",
@@ -2183,22 +2173,24 @@ dependencies = [
 
 [[package]]
 name = "odra-schema"
-version = "2.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2246b2ecd220e968316efeb4ecb1d4a5317e40166b59086f0575a79d5010e4c"
+version = "2.10.0"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
 dependencies = [
+ "base64 0.22.1",
+ "blake2 0.10.6",
  "casper-contract-schema",
  "casper-types",
  "convert_case 0.6.0",
+ "hex",
  "num-traits",
  "odra-core",
+ "serde",
 ]
 
 [[package]]
 name = "odra-test"
-version = "2.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ff12771d24677fbf7efee3dd69a9040ebd7704128dc380460446e4658289089"
+version = "2.10.0"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
 dependencies = [
  "odra-casper-test-vm",
  "odra-core",
@@ -2207,9 +2199,8 @@ dependencies = [
 
 [[package]]
 name = "odra-vm"
-version = "2.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfc572261274c73b63711fe0dae74ad86518ea547ff4ab591b1fc861705bbf27"
+version = "2.10.0"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
 dependencies = [
  "anyhow",
  "backtrace",

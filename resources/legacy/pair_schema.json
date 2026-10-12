@@ -378,6 +378,27 @@
           "is_required": true
         }
       ]
+    },
+    {
+      "name": "DappRegistryChanged",
+      "args": [
+        {
+          "name": "previous_registry",
+          "ty": {
+            "Option": "Key"
+          },
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        },
+        {
+          "name": "new_registry",
+          "ty": "Key",
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        }
+      ]
     }
   ],
   "entrypoints": [
@@ -404,11 +425,49 @@
           "is_ref": false,
           "is_slice": false,
           "is_required": true
+        },
+        {
+          "name": "dapp_registry",
+          "ty": "Key",
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
         }
       ],
       "is_mutable": true,
       "return_ty": "Unit",
       "ty": "Constructor",
+      "attributes": []
+    },
+    {
+      "name": "upgrade",
+      "args": [],
+      "is_mutable": true,
+      "return_ty": "Unit",
+      "ty": "Constructor",
+      "attributes": []
+    },
+    {
+      "name": "initialize",
+      "args": [
+        {
+          "name": "token0",
+          "ty": "Key",
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        },
+        {
+          "name": "token1",
+          "ty": "Key",
+          "is_ref": false,
+          "is_slice": false,
+          "is_required": true
+        }
+      ],
+      "is_mutable": true,
+      "return_ty": "Unit",
+      "ty": "Public",
       "attributes": []
     },
     {
@@ -742,6 +801,14 @@
       "args": [],
       "is_mutable": false,
       "return_ty": "String",
+      "ty": "Public",
+      "attributes": []
+    },
+    {
+      "name": "get_dapp_registry",
+      "args": [],
+      "is_mutable": false,
+      "return_ty": "Key",
       "ty": "Public",
       "attributes": []
     }
