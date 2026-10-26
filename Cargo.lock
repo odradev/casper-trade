@@ -2028,7 +2028,7 @@ dependencies = [
 [[package]]
 name = "odra"
 version = "2.10.0"
-source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#d8d6a1bee385d77e9ab1b40e132075b70cf83ae7"
 dependencies = [
  "odra-casper-wasm-env",
  "odra-core",
@@ -2039,7 +2039,7 @@ dependencies = [
 [[package]]
 name = "odra-build"
 version = "2.10.0"
-source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#d8d6a1bee385d77e9ab1b40e132075b70cf83ae7"
 dependencies = [
  "serde",
  "serde_json",
@@ -2048,7 +2048,7 @@ dependencies = [
 [[package]]
 name = "odra-casper-livenet-env"
 version = "2.10.0"
-source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#d8d6a1bee385d77e9ab1b40e132075b70cf83ae7"
 dependencies = [
  "anyhow",
  "blake2 0.10.6",
@@ -2063,7 +2063,7 @@ dependencies = [
 [[package]]
 name = "odra-casper-rpc-client"
 version = "2.10.0"
-source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#d8d6a1bee385d77e9ab1b40e132075b70cf83ae7"
 dependencies = [
  "base16",
  "bytes",
@@ -2087,7 +2087,7 @@ dependencies = [
 [[package]]
 name = "odra-casper-test-vm"
 version = "2.10.0"
-source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#d8d6a1bee385d77e9ab1b40e132075b70cf83ae7"
 dependencies = [
  "casper-contract",
  "casper-engine-test-support",
@@ -2099,7 +2099,7 @@ dependencies = [
 [[package]]
 name = "odra-casper-wasm-env"
 version = "2.10.0"
-source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#d8d6a1bee385d77e9ab1b40e132075b70cf83ae7"
 dependencies = [
  "casper-contract",
  "ink_allocator",
@@ -2110,7 +2110,7 @@ dependencies = [
 [[package]]
 name = "odra-cli"
 version = "2.10.0"
-source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#d8d6a1bee385d77e9ab1b40e132075b70cf83ae7"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2118,7 +2118,6 @@ dependencies = [
  "clap_complete",
  "hex",
  "odra",
- "odra-build",
  "odra-casper-livenet-env",
  "pretty_assertions",
  "prettycli",
@@ -2135,7 +2134,7 @@ dependencies = [
 [[package]]
 name = "odra-core"
 version = "2.10.0"
-source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#d8d6a1bee385d77e9ab1b40e132075b70cf83ae7"
 dependencies = [
  "anyhow",
  "casper-event-standard",
@@ -2150,7 +2149,7 @@ dependencies = [
 [[package]]
 name = "odra-macros"
 version = "2.10.0"
-source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#d8d6a1bee385d77e9ab1b40e132075b70cf83ae7"
 dependencies = [
  "convert_case 0.6.0",
  "derive-try-from-ref",
@@ -2164,7 +2163,7 @@ dependencies = [
 [[package]]
 name = "odra-modules"
 version = "2.10.0"
-source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#d8d6a1bee385d77e9ab1b40e132075b70cf83ae7"
 dependencies = [
  "base64 0.22.1",
  "odra",
@@ -2174,7 +2173,7 @@ dependencies = [
 [[package]]
 name = "odra-schema"
 version = "2.10.0"
-source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#d8d6a1bee385d77e9ab1b40e132075b70cf83ae7"
 dependencies = [
  "base64 0.22.1",
  "blake2 0.10.6",
@@ -2190,7 +2189,7 @@ dependencies = [
 [[package]]
 name = "odra-test"
 version = "2.10.0"
-source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#d8d6a1bee385d77e9ab1b40e132075b70cf83ae7"
 dependencies = [
  "odra-casper-test-vm",
  "odra-core",
@@ -2200,7 +2199,7 @@ dependencies = [
 [[package]]
 name = "odra-vm"
 version = "2.10.0"
-source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#21efd40631c98581e482ed8eca6ca4836693465c"
+source = "git+https://github.com/odradev/odra.git?branch=feature%2Fdapp-registry#d8d6a1bee385d77e9ab1b40e132075b70cf83ae7"
 dependencies = [
  "anyhow",
  "backtrace",
