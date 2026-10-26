@@ -1,105 +1,105 @@
 mod common;
-
-use common::setup;
+use common::{setup, TestContext};
+use odra::host::{Deployer, NoArgs};
 use odra::prelude::*;
 use odra_modules::dapp::events::DappContractAdded;
+use odra_modules::dapp::{OwnedDappRegistry, OwnedDappRegistryHostRef};
 
-// The factory is a dapp factory: every pair it creates points to the registry and is registered in it.
+// The contracts of CSPR.trade know nothing about the dapp registry: the registry lists them, and the
+// PairFactory adds every pair the Factory creates.
+fn join_dapp(context: &mut TestContext) -> OwnedDappRegistryHostRef {
+    let mut registry = OwnedDappRegistry::deploy(&context.env, NoArgs);
+    // Only the Factory may create pairs, and the PairFactory adds them to the dapp.
+    context
+        .pair_factory
+        .set_factory_creator(context.factory.address());
+    registry.add_dapp_contract(&context.pair_factory.address(), true);
+    context
+        .pair_factory
+        .set_factory_dapp_registry(registry.address());
+    // The contracts deployed before join as they are.
+    for contract in [
+        context.factory.address(),
+        context.router.address(),
+        context.pair.address(),
+    ] {
+        registry.add_dapp_contract(&contract, false);
+    }
+    registry
+}
+
 #[test]
-fn created_pairs_belong_to_the_dapp() {
+fn created_pairs_join_the_dapp() {
     let mut context = setup();
-    let registry = context.dapp_registry.address();
+    let registry = join_dapp(&mut context);
 
-    assert_eq!(context.factory.get_dapp_registry(), registry);
-    assert_eq!(context.router.get_dapp_registry(), registry);
-    assert_eq!(context.pair.get_dapp_registry(), registry);
-    assert!(context
-        .dapp_registry
-        .is_dapp_factory(&context.factory.address()));
-
-    // The pair created in the setup is registered by the factory.
-    assert!(context
-        .dapp_registry
-        .is_dapp_contract(&context.pair.address()));
-    assert!(!context
-        .dapp_registry
-        .is_dapp_factory(&context.pair.address()));
-    assert!(context.env.emitted_event(
-        &context.dapp_registry,
-        DappContractAdded {
-            contract: context.pair.address(),
-            is_factory: false,
-            registrar: context.factory.address(),
-        }
-    ));
-
-    // A pair created later joins the dapp as well.
     let new_pair = context
         .factory
         .create_pair(context.token0.address(), context.wcspr.address());
-    assert!(context.dapp_registry.is_dapp_contract(&new_pair));
-
-    // The owner registers the router.
-    context
-        .dapp_registry
-        .add_dapp_contract(&context.router.address(), false);
-
+    assert!(registry.is_dapp_contract(&new_pair));
+    assert!(!registry.is_dapp_factory(&new_pair));
+    assert!(context.env.emitted_event(
+        &registry,
+        DappContractAdded {
+            contract: new_pair,
+            is_factory: false,
+            registrar: context.pair_factory.address(),
+        }
+    ));
     assert_eq!(
-        context.dapp_registry.get_dapp_contracts(),
+        registry.get_dapp_contracts(),
         vec![
-            registry,
+            registry.address(),
+            context.pair_factory.address(),
             context.factory.address(),
+            context.router.address(),
             context.pair.address(),
             new_pair,
-            context.router.address(),
         ]
     );
+    assert!(registry.is_dapp_factory(&context.pair_factory.address()));
 }
 
-// Only an admin of the factory may point it to another registry.
+// Pairs are created only through the Factory, so nobody else can add contracts to the dapp.
 #[test]
-fn only_admin_sets_factory_registry() {
+fn only_the_factory_creates_pairs() {
     let mut context = setup();
-    let other_registry = context.router.address();
+    let registry = join_dapp(&mut context);
+    let (factory, token0, token1) = (
+        context.factory.address(),
+        context.token0.address(),
+        context.wcspr_partner.address(),
+    );
 
-    context.env.set_caller(context.alice);
-    assert!(context
-        .factory
-        .try_set_dapp_registry(&other_registry)
-        .is_err());
-
-    context.env.set_caller(context.owner);
-    context.factory.set_dapp_registry(&other_registry);
-    assert_eq!(context.factory.get_dapp_registry(), other_registry);
+    for caller in [context.owner, context.alice] {
+        context.env.set_caller(caller);
+        assert_eq!(
+            context
+                .pair_factory
+                .try_new_contract("Fake".to_string(), factory, token0, token1),
+            Err(ExecutionError::CallerNotFactoryCreator.into())
+        );
+    }
+    assert_eq!(registry.get_dapp_contracts().len(), 5);
 }
 
-// The PairFactory joins the dapp as a regular contract; the pairs it deploys keep answering with
-// their own registry, although they share the factory's `get_dapp_registry`.
+// Only the deployer of the PairFactory may pick its creator and registry.
 #[test]
-fn pair_factory_belongs_to_the_dapp() {
+fn only_the_deployer_configures_the_pair_factory() {
     let mut context = setup();
-    let registry = context.dapp_registry.address();
+    let registry = OwnedDappRegistry::deploy(&context.env, NoArgs);
 
-    // Only the deployer holds the factory access.
+    // A registry needs a creator first.
+    assert_eq!(
+        context
+            .pair_factory
+            .try_set_factory_dapp_registry(registry.address()),
+        Err(ExecutionError::FactoryCreatorNotSet.into())
+    );
+
     context.env.set_caller(context.alice);
     assert!(context
         .pair_factory
-        .try_set_factory_dapp_registry(registry)
+        .try_set_factory_creator(context.alice)
         .is_err());
-
-    context.env.set_caller(context.owner);
-    context.pair_factory.set_factory_dapp_registry(registry);
-    assert_eq!(context.pair_factory.get_dapp_registry(), registry);
-    context
-        .dapp_registry
-        .add_dapp_contract(&context.pair_factory.address(), false);
-    assert!(context
-        .dapp_registry
-        .is_dapp_contract(&context.pair_factory.address()));
-
-    assert_eq!(context.pair.get_dapp_registry(), registry);
-    let new_pair = context
-        .factory
-        .create_pair(context.token1.address(), context.wcspr.address());
-    assert!(context.dapp_registry.is_dapp_contract(&new_pair));
 }

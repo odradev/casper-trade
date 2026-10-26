@@ -15,7 +15,7 @@ use odra_modules::dapp::OwnedDappRegistry;
 use odra_modules::wrapped_native::WrappedNativeToken;
 
 mod scenarios;
-use scenarios::dapp_registry::{join_pair_factory, load_or_deploy_registry, register};
+use scenarios::dapp_registry::{connect_pair_factory, load_or_deploy_registry, register};
 use scenarios::{
     AddLiquidity, AddLiquidityCSPR, AddWCSPR, CheckDappRegistry, CreateDappPair, DeployWcspr,
     MigrateToDappRegistry, SetupPair, SetupSamples, SwapTokens, UpgradeFactory, UpgradePairs,
@@ -60,7 +60,6 @@ impl DeployScript for ContractsDeployScript {
             FactoryInitArgs {
                 fee_to: Some(env.get_account(0)), // Set deployer as fee collector
                 pair_factory: pair_factory.address(),
-                dapp_registry: dapp_registry.address(),
             },
             InstallConfig::upgradable::<Factory>(),
             container,
@@ -76,7 +75,6 @@ impl DeployScript for ContractsDeployScript {
             RouterInitArgs {
                 factory: factory.address(),
                 wcspr: wcspr_address,
-                dapp_registry: dapp_registry.address(),
             },
             InstallConfig::upgradable::<Router>(),
             container,
@@ -85,9 +83,15 @@ impl DeployScript for ContractsDeployScript {
 
         println!("Router deployed successfully!");
 
-        register(env, &mut dapp_registry, "Factory", factory.address(), true);
+        // The contracts join the dapp as they are; the PairFactory adds the pairs the Factory creates.
+        connect_pair_factory(
+            env,
+            &mut dapp_registry,
+            &mut pair_factory,
+            factory.address(),
+        );
+        register(env, &mut dapp_registry, "Factory", factory.address(), false);
         register(env, &mut dapp_registry, "Router", router.address(), false);
-        join_pair_factory(env, &mut dapp_registry, &mut pair_factory);
         println!("  Factory: {:?}", router.factory_address());
         println!("  WCSPR: {:?}", router.wcspr());
 

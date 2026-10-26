@@ -1,8 +1,10 @@
-use casper_trade_contracts::factory::{Factory, FactoryHostRef, FactoryUpgradeArgs};
+use casper_trade_contracts::factory::Factory;
 use casper_trade_contracts::pair::{PairFactory, PairFactoryHostRef, PairHostRef};
-use casper_trade_contracts::router::{Router, RouterHostRef, RouterUpgradeArgs};
+use casper_trade_contracts::router::Router;
 use casper_trade_contracts::sample_tokens::{SampleToken, SampleTokenInitArgs};
+use odra::casper_types::bytesrepr::FromBytes;
 use odra::casper_types::U256;
+use odra::factory_dapp::{CREATOR_KEY, DAPP_REGISTRY_KEY};
 use odra::host::{Deployer, HostEnv, HostRef, InstallConfig, NoArgs};
 use odra::prelude::{Address, Addressable};
 use odra::schema::casper_contract_schema::NamedCLType;
@@ -12,6 +14,9 @@ use odra_cli::{
     CommandArg, ContractProvider, DeployedContractsContainer,
 };
 use odra_modules::dapp::{DappMetadata, OwnedDappRegistry, OwnedDappRegistryHostRef};
+
+// The contracts of CSPR.trade know nothing about the dapp registry: the registry lists them, and the
+// PairFactory, which only the Factory may call, adds every new pair to it.
 
 /// Returns the dapp registry from the container, deploying it if it is not there yet.
 pub fn load_or_deploy_registry(
@@ -60,22 +65,36 @@ pub fn register(
     odra_cli::log(format!("✓ {} registered (factory: {})", name, is_factory));
 }
 
-/// Points the PairFactory to the registry and adds it to the dapp, unless it is already there.
-///
-/// The factory only deploys the pairs; the Factory registers them, so the PairFactory joins as a
-/// regular contract.
-pub fn join_pair_factory(
+/// The address stored under a named key of the contract, if any.
+fn named_address(env: &HostEnv, contract: &Address, key: &str) -> Option<Address> {
+    let bytes = env.get_named_value(contract, key)?;
+    Address::from_bytes(&bytes).ok().map(|(address, _)| address)
+}
+
+/// Lets only the Factory create pairs and makes the PairFactory add them to the dapp, as a dapp
+/// factory. Skips the steps already done.
+pub fn connect_pair_factory(
     env: &HostEnv,
     registry: &mut OwnedDappRegistryHostRef,
     pair_factory: &mut PairFactoryHostRef,
+    factory: Address,
 ) {
-    if registry.is_dapp_contract(&pair_factory.address()) {
-        odra_cli::log("  PairFactory already registered");
-        return;
+    let address = pair_factory.address();
+    if named_address(env, &address, CREATOR_KEY) == Some(factory) {
+        odra_cli::log("  PairFactory creator already set");
+    } else {
+        env.set_gas(cspr!(10));
+        pair_factory.set_factory_creator(factory);
+        odra_cli::log("✓ PairFactory creates pairs only for the Factory");
     }
-    env.set_gas(cspr!(10));
-    pair_factory.set_factory_dapp_registry(registry.address());
-    register(env, registry, "PairFactory", pair_factory.address(), false);
+    register(env, registry, "PairFactory", address, true);
+    if named_address(env, &address, DAPP_REGISTRY_KEY) == Some(registry.address()) {
+        odra_cli::log("  PairFactory registry already set");
+    } else {
+        env.set_gas(cspr!(10));
+        pair_factory.set_factory_dapp_registry(registry.address());
+        odra_cli::log("✓ PairFactory adds new pairs to the dapp");
+    }
 }
 
 /// Pairs recorded in the container, by package name.
@@ -97,7 +116,7 @@ pub struct MigrateToDappRegistry;
 
 impl ScenarioMetadata for MigrateToDappRegistry {
     const NAME: &'static str = "MigrateToDappRegistry";
-    const DESCRIPTION: &'static str = "Deploys the dapp registry, upgrades Factory, Router, PairFactory and the pairs from the contracts file, and registers them in the dapp";
+    const DESCRIPTION: &'static str = "Deploys the dapp registry, upgrades the PairFactory so it adds new pairs to the dapp, and registers Factory, Router, PairFactory and the pairs from the contracts file";
 }
 
 impl Scenario for MigrateToDappRegistry {
@@ -112,55 +131,14 @@ impl Scenario for MigrateToDappRegistry {
         _args: Args,
     ) -> Result<(), Error> {
         let mut registry = load_or_deploy_registry(env, container)?;
-        let dapp_registry = registry.address();
+        let factory = container.contract_ref::<Factory>(env)?.address();
+        let router = container.contract_ref::<Router>(env)?.address();
 
-        let factory = container.contract_ref::<Factory>(env)?;
-        // Livenet runs getters locally with the new code, so `get_dapp_registry` of a contract that
-        // has not been upgraded reverts (and panics) instead of failing; ask the registry instead.
-        if registry.is_dapp_contract(&factory.address()) {
-            odra_cli::log("  Factory already upgraded");
-        } else {
-            odra_cli::log(format!("Upgrading Factory at {:?}...", factory.address()));
-            env.set_gas(cspr!(500));
-            Factory::try_upgrade(
-                env,
-                factory.address(),
-                FactoryUpgradeArgs {
-                    dapp_registry: Some(dapp_registry),
-                },
-            )?;
-            odra_cli::log("✓ Factory upgraded");
-        }
-
-        let router = container.contract_ref::<Router>(env)?;
-        if registry.is_dapp_contract(&router.address()) {
-            odra_cli::log("  Router already upgraded");
-        } else {
-            odra_cli::log(format!("Upgrading Router at {:?}...", router.address()));
-            env.set_gas(cspr!(500));
-            Router::try_upgrade(
-                env,
-                router.address(),
-                RouterUpgradeArgs {
-                    dapp_registry: Some(dapp_registry),
-                },
-            )?;
-            odra_cli::log("✓ Router upgraded");
-        }
-
-        register(env, &mut registry, "Factory", factory.address(), true);
-        register(env, &mut registry, "Router", router.address(), false);
-
-        // The pairs are upgraded by the PairFactory, which has to carry the new Pair code first.
+        // Only the PairFactory changes: it needs the factory entry points of the creator and the
+        // registry. An upgraded PairFactory has its creator set right after the upgrade.
         let mut pair_factory = container.contract_ref::<PairFactory>(env)?;
-        let pairs = pairs(env, container);
-        let pair_factory_joined = registry.is_dapp_contract(&pair_factory.address());
-        if pair_factory_joined
-            && pairs
-                .iter()
-                .all(|(_, pair)| registry.is_dapp_contract(&pair.address()))
-        {
-            odra_cli::log("  PairFactory and pairs already upgraded");
+        if named_address(env, &pair_factory.address(), CREATOR_KEY).is_some() {
+            odra_cli::log("  PairFactory already upgraded");
         } else {
             odra_cli::log(format!(
                 "Upgrading PairFactory at {:?}...",
@@ -170,18 +148,13 @@ impl Scenario for MigrateToDappRegistry {
             PairFactory::try_upgrade(env, pair_factory.address(), NoArgs)?;
             odra_cli::log("✓ PairFactory upgraded");
         }
-        join_pair_factory(env, &mut registry, &mut pair_factory);
+        connect_pair_factory(env, &mut registry, &mut pair_factory, factory);
 
-        for (name, pair) in &pairs {
-            if !registry.is_dapp_contract(&pair.address()) {
-                // The PairFactory keys its children by the pair symbol.
-                let symbol = pair.symbol();
-                odra_cli::log(format!("Upgrading pair {} ({})...", name, symbol));
-                env.set_gas(cspr!(800));
-                pair_factory.try_upgrade_child_contract(symbol)?;
-                odra_cli::log(format!("✓ Pair {} upgraded", name));
-            }
-            register(env, &mut registry, name, pair.address(), false);
+        // The other contracts join as they are.
+        register(env, &mut registry, "Factory", factory, false);
+        register(env, &mut registry, "Router", router, false);
+        for (name, pair) in pairs(env, container) {
+            register(env, &mut registry, &name, pair.address(), false);
         }
 
         odra_cli::log("✓ Migration to the dapp registry completed");
@@ -270,15 +243,11 @@ impl Scenario for CreateDappPair {
     }
 }
 
-/// Reads the registry a dapp contract points to.
-type RegistryGetter = Box<dyn Fn() -> Address>;
-
 pub struct CheckDappRegistry;
 
 impl ScenarioMetadata for CheckDappRegistry {
     const NAME: &'static str = "CheckDappRegistry";
-    const DESCRIPTION: &'static str =
-        "Checks that Factory, Router, PairFactory and every pair from the contracts file belong to the dapp";
+    const DESCRIPTION: &'static str = "Checks that Factory, Router, PairFactory and every pair from the contracts file belong to the dapp, and that the PairFactory adds new pairs to it";
 }
 
 impl Scenario for CheckDappRegistry {
@@ -318,48 +287,41 @@ impl Scenario for CheckDappRegistry {
             ));
         }
 
-        let factory: FactoryHostRef = container.contract_ref::<Factory>(env)?;
-        let router: RouterHostRef = container.contract_ref::<Router>(env)?;
-        let pair_factory = container.contract_ref::<PairFactory>(env)?;
-        let mut members: Vec<(String, Address, RegistryGetter)> = vec![
+        let factory = container.contract_ref::<Factory>(env)?.address();
+        let pair_factory = container.contract_ref::<PairFactory>(env)?.address();
+        let mut checks: Vec<(String, bool)> = vec![
             (
-                "Factory".to_string(),
-                factory.address(),
-                Box::new(move || factory.get_dapp_registry()),
+                "Factory registered".to_string(),
+                registry.is_dapp_contract(&factory),
             ),
             (
-                "Router".to_string(),
-                router.address(),
-                Box::new(move || router.get_dapp_registry()),
+                "Router registered".to_string(),
+                registry.is_dapp_contract(&container.contract_ref::<Router>(env)?.address()),
             ),
             (
-                "PairFactory".to_string(),
-                pair_factory.address(),
-                Box::new(move || pair_factory.get_dapp_registry()),
+                "PairFactory registered as a factory".to_string(),
+                registry.is_dapp_factory(&pair_factory),
+            ),
+            (
+                "PairFactory creates pairs only for the Factory".to_string(),
+                named_address(env, &pair_factory, CREATOR_KEY) == Some(factory),
+            ),
+            (
+                "PairFactory adds new pairs to the registry".to_string(),
+                named_address(env, &pair_factory, DAPP_REGISTRY_KEY) == Some(registry.address()),
             ),
         ];
         for (name, pair) in pairs(env, container) {
-            members.push((
-                name,
-                pair.address(),
-                Box::new(move || pair.get_dapp_registry()),
+            checks.push((
+                format!("{} registered", name),
+                registry.is_dapp_contract(&pair.address()),
             ));
         }
 
         let mut failures = vec![];
-        odra_cli::log("Membership:");
-        for (name, address, get_dapp_registry) in members {
-            let registered = registry.is_dapp_contract(&address);
-            // A contract that has not been upgraded reverts on livenet, see MigrateToDappRegistry.
-            let points_to = registered.then(get_dapp_registry);
-            let ok = points_to == Some(registry.address());
-            odra_cli::log(format!(
-                "  {} {}: registered={}, get_dapp_registry={:?}",
-                if ok { "✓" } else { "✗" },
-                name,
-                registered,
-                points_to
-            ));
+        odra_cli::log("Checks:");
+        for (name, ok) in checks {
+            odra_cli::log(format!("  {} {}", if ok { "✓" } else { "✗" }, name));
             if !ok {
                 failures.push(name);
             }
@@ -370,7 +332,7 @@ impl Scenario for CheckDappRegistry {
             Ok(())
         } else {
             Err(Error::OdraError {
-                message: format!("Not part of the dapp: {}", failures.join(", ")),
+                message: format!("Failed: {}", failures.join(", ")),
             })
         }
     }
