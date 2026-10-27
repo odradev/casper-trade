@@ -4,7 +4,7 @@ use casper_trade_contracts::router::Router;
 use casper_trade_contracts::sample_tokens::{SampleToken, SampleTokenInitArgs};
 use odra::casper_types::bytesrepr::FromBytes;
 use odra::casper_types::U256;
-use odra::factory_dapp::{CREATOR_KEY, DAPP_REGISTRY_KEY};
+use odra::factory_dapp::{CREATOR_KEY, DAPP_KEY, REGISTRY_KEY};
 use odra::host::{Deployer, HostEnv, HostRef, InstallConfig, NoArgs};
 use odra::prelude::{Address, Addressable};
 use odra::schema::casper_contract_schema::NamedCLType;
@@ -54,15 +54,18 @@ pub fn register(
     registry: &mut OwnedDappRegistryHostRef,
     name: &str,
     address: Address,
-    is_factory: bool,
+    is_registrar: bool,
 ) {
     if registry.is_dapp_contract(&address) {
         odra_cli::log(format!("  {} already registered", name));
         return;
     }
     env.set_gas(cspr!(10));
-    registry.add_dapp_contract(&address, is_factory);
-    odra_cli::log(format!("✓ {} registered (factory: {})", name, is_factory));
+    registry.add_dapp_contract(&address, is_registrar);
+    odra_cli::log(format!(
+        "✓ {} registered (registrar: {})",
+        name, is_registrar
+    ));
 }
 
 /// The address stored under a named key of the contract, if any.
@@ -71,8 +74,14 @@ fn named_address(env: &HostEnv, contract: &Address, key: &str) -> Option<Address
     Address::from_bytes(&bytes).ok().map(|(address, _)| address)
 }
 
-/// Lets only the Factory create pairs and makes the PairFactory add them to the dapp, as a dapp
-/// factory. Skips the steps already done.
+/// The registry the PairFactory adds new pairs to: the `registry` item of its `__dapp` dictionary.
+fn factory_registry(env: &HostEnv, pair_factory: &Address) -> Option<Address> {
+    let bytes = env.get_dictionary_value(pair_factory, DAPP_KEY, REGISTRY_KEY.as_bytes())?;
+    Address::from_bytes(&bytes).ok().map(|(address, _)| address)
+}
+
+/// Lets only the Factory create pairs and makes the PairFactory add them to the dapp, as a
+/// registrar. Skips the steps already done.
 pub fn connect_pair_factory(
     env: &HostEnv,
     registry: &mut OwnedDappRegistryHostRef,
@@ -88,7 +97,7 @@ pub fn connect_pair_factory(
         odra_cli::log("✓ PairFactory creates pairs only for the Factory");
     }
     register(env, registry, "PairFactory", address, true);
-    if named_address(env, &address, DAPP_REGISTRY_KEY) == Some(registry.address()) {
+    if factory_registry(env, &address) == Some(registry.address()) {
         odra_cli::log("  PairFactory registry already set");
     } else {
         env.set_gas(cspr!(10));
@@ -279,8 +288,8 @@ impl Scenario for CheckDappRegistry {
                 "    {:?} {}{}",
                 contract,
                 name,
-                if registry.is_dapp_factory(contract) {
-                    " (factory)"
+                if registry.is_dapp_registrar(contract) {
+                    " (registrar)"
                 } else {
                     ""
                 }
@@ -299,8 +308,8 @@ impl Scenario for CheckDappRegistry {
                 registry.is_dapp_contract(&container.contract_ref::<Router>(env)?.address()),
             ),
             (
-                "PairFactory registered as a factory".to_string(),
-                registry.is_dapp_factory(&pair_factory),
+                "PairFactory registered as a registrar".to_string(),
+                registry.is_dapp_registrar(&pair_factory),
             ),
             (
                 "PairFactory creates pairs only for the Factory".to_string(),
@@ -308,7 +317,7 @@ impl Scenario for CheckDappRegistry {
             ),
             (
                 "PairFactory adds new pairs to the registry".to_string(),
-                named_address(env, &pair_factory, DAPP_REGISTRY_KEY) == Some(registry.address()),
+                factory_registry(env, &pair_factory) == Some(registry.address()),
             ),
         ];
         for (name, pair) in pairs(env, container) {

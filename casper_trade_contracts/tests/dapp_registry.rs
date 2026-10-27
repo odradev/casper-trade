@@ -37,12 +37,12 @@ fn created_pairs_join_the_dapp() {
         .factory
         .create_pair(context.token0.address(), context.wcspr.address());
     assert!(registry.is_dapp_contract(&new_pair));
-    assert!(!registry.is_dapp_factory(&new_pair));
+    assert!(!registry.is_dapp_registrar(&new_pair));
     assert!(context.env.emitted_event(
         &registry,
         DappContractAdded {
             contract: new_pair,
-            is_factory: false,
+            is_registrar: false,
             registrar: context.pair_factory.address(),
         }
     ));
@@ -57,7 +57,7 @@ fn created_pairs_join_the_dapp() {
             new_pair,
         ]
     );
-    assert!(registry.is_dapp_factory(&context.pair_factory.address()));
+    assert!(registry.is_dapp_registrar(&context.pair_factory.address()));
 }
 
 // Pairs are created only through the Factory, so nobody else can add contracts to the dapp.
