@@ -1,30 +1,30 @@
 mod common;
 use common::{setup, TestContext};
-use odra::host::{Deployer, NoArgs};
+use odra::host::{Deployer, HostRef, NoArgs};
 use odra::prelude::*;
+use odra_modules::dapp::errors::Error;
 use odra_modules::dapp::events::DappContractAdded;
-use odra_modules::dapp::{OwnedDappRegistry, OwnedDappRegistryHostRef};
+use odra_modules::dapp::{DappContractHostRef, OwnedDappRegistry, OwnedDappRegistryHostRef};
 
-// The contracts of CSPR.trade know nothing about the dapp registry: the registry lists them, and the
-// PairFactory adds every pair the Factory creates.
+// Factory and Router point to the registry from their init. The PairFactory points to it once
+// configured, and then points every pair it creates or upgrades there too; it adds the pairs it creates.
 fn join_dapp(context: &mut TestContext) -> OwnedDappRegistryHostRef {
-    let mut registry = OwnedDappRegistry::deploy(&context.env, NoArgs);
-    // Only the Factory may create pairs, and the PairFactory adds them to the dapp.
+    let mut registry =
+        OwnedDappRegistryHostRef::new(context.dapp_registry.address(), context.env.clone());
+    // Only the Factory may create pairs.
     context
         .pair_factory
         .set_factory_creator(context.factory.address());
-    registry.add_dapp_contract(&context.pair_factory.address(), true);
     context
         .pair_factory
         .set_factory_dapp_registry(registry.address());
-    // The contracts deployed before join as they are.
-    for contract in [
-        context.factory.address(),
-        context.router.address(),
-        context.pair.address(),
-    ] {
-        registry.add_dapp_contract(&contract, false);
-    }
+    registry.add_dapp_contract(&context.pair_factory.address(), true);
+    registry.add_dapp_contract(&context.factory.address(), false);
+    registry.add_dapp_contract(&context.router.address(), false);
+    // The pair created before points to the registry after an upgrade.
+    let symbol = context.pair.symbol();
+    context.pair_factory.upgrade_child_contract(symbol);
+    registry.add_dapp_contract(&context.pair.address(), false);
     registry
 }
 
@@ -58,6 +58,31 @@ fn created_pairs_join_the_dapp() {
         ]
     );
     assert!(registry.is_dapp_registrar(&context.pair_factory.address()));
+
+    // Every contract points to the registry; the pairs need no code of their own.
+    for contract in registry.get_dapp_contracts() {
+        let contract = DappContractHostRef::new(contract, context.env.clone());
+        assert_eq!(contract.get_dapp_registry(), registry.address());
+    }
+}
+
+// A pair the PairFactory created before it had a registry does not point to it until upgraded.
+#[test]
+fn old_pairs_join_after_an_upgrade() {
+    let mut context = setup();
+    let mut registry =
+        OwnedDappRegistryHostRef::new(context.dapp_registry.address(), context.env.clone());
+    assert_eq!(
+        registry.try_add_dapp_contract(&context.pair.address(), false),
+        Err(ExecutionError::DappRegistryNotSet.into())
+    );
+    let other = OwnedDappRegistry::deploy(&context.env, NoArgs);
+    assert_eq!(
+        registry.try_add_dapp_contract(&other.address(), false),
+        Err(Error::DappRegistryMismatch.into())
+    );
+    join_dapp(&mut context);
+    assert!(registry.is_dapp_contract(&context.pair.address()));
 }
 
 // Pairs are created only through the Factory, so nobody else can add contracts to the dapp.

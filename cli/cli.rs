@@ -60,6 +60,7 @@ impl DeployScript for ContractsDeployScript {
             FactoryInitArgs {
                 fee_to: Some(env.get_account(0)), // Set deployer as fee collector
                 pair_factory: pair_factory.address(),
+                dapp_registry: dapp_registry.address(),
             },
             InstallConfig::upgradable::<Factory>(),
             container,
@@ -75,6 +76,7 @@ impl DeployScript for ContractsDeployScript {
             RouterInitArgs {
                 factory: factory.address(),
                 wcspr: wcspr_address,
+                dapp_registry: dapp_registry.address(),
             },
             InstallConfig::upgradable::<Router>(),
             container,

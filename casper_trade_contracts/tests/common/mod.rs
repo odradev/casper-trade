@@ -12,6 +12,7 @@ use odra::casper_types::U256;
 use odra::host::{Deployer, HostEnv, HostRef, NoArgs};
 use odra::prelude::*;
 use odra_modules::cep18_token::Cep18HostRef;
+use odra_modules::dapp::{OwnedDappRegistry, OwnedDappRegistryHostRef};
 use odra_modules::wrapped_native::{WrappedNativeToken, WrappedNativeTokenHostRef};
 
 #[allow(dead_code)]
@@ -20,6 +21,7 @@ pub struct TestContext {
     pub factory: FactoryHostRef,
     pub pair_factory: PairFactoryHostRef,
     pub router: RouterHostRef,
+    pub dapp_registry: OwnedDappRegistryHostRef,
     pub token0: SampleTokenHostRef,
     pub token1: SampleTokenHostRef,
     pub wcspr: WrappedNativeTokenHostRef,
@@ -35,6 +37,7 @@ pub fn setup() -> TestContext {
     let owner = env.get_account(0);
     let alice = env.get_account(1);
     let pair_factory = PairFactory::deploy(&env, NoArgs);
+    let dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
 
     // Deploy the actual Factory contract
     let mut factory = Factory::deploy(
@@ -42,6 +45,7 @@ pub fn setup() -> TestContext {
         FactoryInitArgs {
             fee_to: None,
             pair_factory: pair_factory.address(),
+            dapp_registry: dapp_registry.address(),
         },
     );
 
@@ -54,6 +58,7 @@ pub fn setup() -> TestContext {
         RouterInitArgs {
             factory: factory.address(),
             wcspr: wcspr.address(),
+            dapp_registry: dapp_registry.address(),
         },
     );
 
@@ -98,6 +103,7 @@ pub fn setup() -> TestContext {
         factory,
         pair_factory,
         router,
+        dapp_registry,
         token0,
         token1,
         wcspr,

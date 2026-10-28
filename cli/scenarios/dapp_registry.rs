@@ -1,6 +1,6 @@
-use casper_trade_contracts::factory::Factory;
+use casper_trade_contracts::factory::{Factory, FactoryUpgradeArgs};
 use casper_trade_contracts::pair::{PairFactory, PairFactoryHostRef, PairHostRef};
-use casper_trade_contracts::router::Router;
+use casper_trade_contracts::router::{Router, RouterUpgradeArgs};
 use casper_trade_contracts::sample_tokens::{SampleToken, SampleTokenInitArgs};
 use odra::casper_types::bytesrepr::FromBytes;
 use odra::casper_types::U256;
@@ -74,14 +74,16 @@ fn named_address(env: &HostEnv, contract: &Address, key: &str) -> Option<Address
     Address::from_bytes(&bytes).ok().map(|(address, _)| address)
 }
 
-/// The registry the PairFactory adds new pairs to: the `registry` item of its `__dapp` dictionary.
-fn factory_registry(env: &HostEnv, pair_factory: &Address) -> Option<Address> {
-    let bytes = env.get_dictionary_value(pair_factory, DAPP_KEY, REGISTRY_KEY.as_bytes())?;
+/// The registry a contract points to: the `registry` item of its `__dapp` dictionary, read from the
+/// chain. Every contract of the dapp keeps it there, the pairs included.
+fn dapp_registry_of(env: &HostEnv, contract: &Address) -> Option<Address> {
+    let bytes = env.get_dictionary_value(contract, DAPP_KEY, REGISTRY_KEY.as_bytes())?;
     Address::from_bytes(&bytes).ok().map(|(address, _)| address)
 }
 
-/// Lets only the Factory create pairs and makes the PairFactory add them to the dapp, as a
-/// registrar. Skips the steps already done.
+/// Lets only the Factory create pairs, points the PairFactory to the registry (it points every pair it
+/// creates or upgrades there too) and registers it as a registrar, so it adds the pairs it creates.
+/// Skips the steps already done.
 pub fn connect_pair_factory(
     env: &HostEnv,
     registry: &mut OwnedDappRegistryHostRef,
@@ -96,14 +98,15 @@ pub fn connect_pair_factory(
         pair_factory.set_factory_creator(factory);
         odra_cli::log("✓ PairFactory creates pairs only for the Factory");
     }
-    register(env, registry, "PairFactory", address, true);
-    if factory_registry(env, &address) == Some(registry.address()) {
+    if dapp_registry_of(env, &address) == Some(registry.address()) {
         odra_cli::log("  PairFactory registry already set");
     } else {
         env.set_gas(cspr!(10));
         pair_factory.set_factory_dapp_registry(registry.address());
-        odra_cli::log("✓ PairFactory adds new pairs to the dapp");
+        odra_cli::log("✓ PairFactory points to the registry");
     }
+    // The registry verifies the PairFactory points to it.
+    register(env, registry, "PairFactory", address, true);
 }
 
 /// Pairs recorded in the container, by package name.
@@ -125,7 +128,7 @@ pub struct MigrateToDappRegistry;
 
 impl ScenarioMetadata for MigrateToDappRegistry {
     const NAME: &'static str = "MigrateToDappRegistry";
-    const DESCRIPTION: &'static str = "Deploys the dapp registry, upgrades the PairFactory so it adds new pairs to the dapp, and registers Factory, Router, PairFactory and the pairs from the contracts file";
+    const DESCRIPTION: &'static str = "Deploys the dapp registry, upgrades Factory, Router, PairFactory and the pairs from the contracts file so they point to it, and registers them; the PairFactory adds new pairs to the dapp";
 }
 
 impl Scenario for MigrateToDappRegistry {
@@ -140,11 +143,34 @@ impl Scenario for MigrateToDappRegistry {
         _args: Args,
     ) -> Result<(), Error> {
         let mut registry = load_or_deploy_registry(env, container)?;
-        let factory = container.contract_ref::<Factory>(env)?.address();
-        let router = container.contract_ref::<Router>(env)?.address();
+        let dapp_registry = Some(registry.address());
 
-        // Only the PairFactory changes: it needs the factory entry points of the creator and the
-        // registry. An upgraded PairFactory has its creator set right after the upgrade.
+        // Factory and Router point to the registry after an upgrade. Livenet runs getters locally
+        // with the new code, so `get_dapp_registry` of a contract that has not been upgraded reverts
+        // (and panics) instead of failing; ask the registry instead.
+        let factory = container.contract_ref::<Factory>(env)?.address();
+        if registry.is_dapp_contract(&factory) {
+            odra_cli::log("  Factory already upgraded");
+        } else {
+            odra_cli::log(format!("Upgrading Factory at {:?}...", factory));
+            env.set_gas(cspr!(500));
+            Factory::try_upgrade(env, factory, FactoryUpgradeArgs { dapp_registry })?;
+            odra_cli::log("✓ Factory upgraded");
+        }
+        let router = container.contract_ref::<Router>(env)?.address();
+        if registry.is_dapp_contract(&router) {
+            odra_cli::log("  Router already upgraded");
+        } else {
+            odra_cli::log(format!("Upgrading Router at {:?}...", router));
+            env.set_gas(cspr!(500));
+            Router::try_upgrade(env, router, RouterUpgradeArgs { dapp_registry })?;
+            odra_cli::log("✓ Router upgraded");
+        }
+        register(env, &mut registry, "Factory", factory, false);
+        register(env, &mut registry, "Router", router, false);
+
+        // The PairFactory needs the factory entry points of the creator and the registry. An
+        // upgraded PairFactory has its creator set right after the upgrade.
         let mut pair_factory = container.contract_ref::<PairFactory>(env)?;
         if named_address(env, &pair_factory.address(), CREATOR_KEY).is_some() {
             odra_cli::log("  PairFactory already upgraded");
@@ -159,10 +185,18 @@ impl Scenario for MigrateToDappRegistry {
         }
         connect_pair_factory(env, &mut registry, &mut pair_factory, factory);
 
-        // The other contracts join as they are.
-        register(env, &mut registry, "Factory", factory, false);
-        register(env, &mut registry, "Router", router, false);
+        // The existing pairs point to the registry after an upgrade through the PairFactory.
         for (name, pair) in pairs(env, container) {
+            if registry.is_dapp_contract(&pair.address()) {
+                odra_cli::log(format!("  {} already registered", name));
+                continue;
+            }
+            // The PairFactory keys its children by the pair symbol.
+            let symbol = pair.symbol();
+            odra_cli::log(format!("Upgrading pair {} ({})...", name, symbol));
+            env.set_gas(cspr!(800));
+            pair_factory.try_upgrade_child_contract(symbol)?;
+            odra_cli::log(format!("✓ Pair {} upgraded", name));
             register(env, &mut registry, &name, pair.address(), false);
         }
 
@@ -300,14 +334,6 @@ impl Scenario for CheckDappRegistry {
         let pair_factory = container.contract_ref::<PairFactory>(env)?.address();
         let mut checks: Vec<(String, bool)> = vec![
             (
-                "Factory registered".to_string(),
-                registry.is_dapp_contract(&factory),
-            ),
-            (
-                "Router registered".to_string(),
-                registry.is_dapp_contract(&container.contract_ref::<Router>(env)?.address()),
-            ),
-            (
                 "PairFactory registered as a registrar".to_string(),
                 registry.is_dapp_registrar(&pair_factory),
             ),
@@ -317,13 +343,26 @@ impl Scenario for CheckDappRegistry {
             ),
             (
                 "PairFactory adds new pairs to the registry".to_string(),
-                factory_registry(env, &pair_factory) == Some(registry.address()),
+                dapp_registry_of(env, &pair_factory) == Some(registry.address()),
             ),
         ];
-        for (name, pair) in pairs(env, container) {
+        let router = container.contract_ref::<Router>(env)?.address();
+        let mut members = vec![
+            ("Factory".to_string(), factory),
+            ("Router".to_string(), router),
+            ("PairFactory".to_string(), pair_factory),
+        ];
+        members.extend(
+            pairs(env, container)
+                .into_iter()
+                .map(|(name, pair)| (name, pair.address())),
+        );
+        for (name, address) in members {
+            let points_back = registry.is_dapp_contract(&address)
+                && dapp_registry_of(env, &address) == Some(registry.address());
             checks.push((
-                format!("{} registered", name),
-                registry.is_dapp_contract(&pair.address()),
+                format!("{} registered and points to the registry", name),
+                points_back,
             ));
         }
 
