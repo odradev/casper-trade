@@ -7,6 +7,7 @@ use odra::prelude::*;
 use odra::ContractRef;
 use odra_modules::access::{AccessControl, DEFAULT_ADMIN_ROLE};
 use odra_modules::cep18_token::Cep18ContractRef;
+use odra_modules::dapp::DappContractBase;
 
 #[odra::event]
 pub struct PairCreated {
@@ -22,6 +23,7 @@ pub struct Factory {
     pairs: Mapping<(Address, Address), Address>,
     pair_factory: Var<Address>,
     access_control: SubModule<AccessControl>,
+    dapp: SubModule<DappContractBase>,
 }
 
 #[odra::module]
@@ -29,17 +31,37 @@ impl Factory {
     /// Initializes the factory with the given fee to address.
     ///
     /// If fee to is None, the factory will not charge any fees.
-    pub fn init(&mut self, fee_to: Option<Address>, pair_factory: Address) {
+    pub fn init(&mut self, fee_to: Option<Address>, pair_factory: Address, dapp_registry: Address) {
         let caller = self.env().caller();
         self.fee_to.set(fee_to);
         self.pair_factory.set(pair_factory);
         self.access_control
             .unchecked_grant_role(&DEFAULT_ADMIN_ROLE, &caller);
+        self.dapp.set_dapp_registry(&dapp_registry);
 
         self.env().emit_event(FactoryInitialized {
             fee_to,
             pair_factory,
         });
+    }
+
+    /// Upgrades the factory; `dapp_registry` points an already deployed factory to the registry.
+    pub fn upgrade(&mut self, dapp_registry: Option<Address>) {
+        if let Some(dapp_registry) = dapp_registry {
+            self.dapp.set_dapp_registry(&dapp_registry);
+        }
+    }
+
+    /// Points the factory to another dapp registry.
+    pub fn set_dapp_registry(&mut self, registry: &Address) {
+        self.assert_admin();
+        self.dapp.set_dapp_registry(registry);
+    }
+
+    delegate! {
+        to self.dapp {
+            fn get_dapp_registry(&self) -> Address;
+        }
     }
 
     /// Grants admin role to an address.
@@ -169,6 +191,7 @@ mod tests {
     use super::*;
     use crate::pair::PairFactory;
     use odra::host::{Deployer, NoArgs};
+    use odra_modules::dapp::OwnedDappRegistry;
 
     #[test]
     fn test_admin_add_and_remove() {
@@ -179,11 +202,14 @@ mod tests {
         let non_admin = env.get_account(2);
 
         let pair_factory = PairFactory::deploy(&env, NoArgs);
+
+        let dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
         let mut factory = Factory::deploy(
             &env,
             FactoryInitArgs {
                 fee_to: None,
                 pair_factory: pair_factory.address(),
+                dapp_registry: dapp_registry.address(),
             },
         );
 

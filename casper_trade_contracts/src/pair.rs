@@ -556,6 +556,7 @@ mod tests {
         sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs},
         utils::{encode_price, expand_to_18_decimals},
     };
+    use odra_modules::dapp::OwnedDappRegistry;
 
     use super::*;
     use odra::host::{HostRef, NoArgs};
@@ -580,12 +581,14 @@ mod tests {
         let alice = env.get_account(1);
         let bob = env.get_account(2);
         let pair_factory = PairFactory::deploy(&env, NoArgs);
+        let dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
 
         let mut factory = Factory::deploy(
             &env,
             FactoryInitArgs {
                 fee_to: if fee_on { Some(bob) } else { None },
                 pair_factory: pair_factory.address(),
+                dapp_registry: dapp_registry.address(),
             },
         );
         let token0 = SampleToken::deploy(
@@ -606,6 +609,12 @@ mod tests {
                 initial_supply: expand_to_18_decimals(10000),
             },
         );
+        // The tests expect the tokens in the order the factory sorts them.
+        let (token0, token1) = if token0.address() < token1.address() {
+            (token0, token1)
+        } else {
+            (token1, token0)
+        };
         let pair_address = factory.create_pair(token0.address(), token1.address());
         let pair = PairHostRef::new(pair_address, env.clone());
 
