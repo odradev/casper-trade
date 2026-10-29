@@ -43,7 +43,7 @@ fn created_pairs_join_the_dapp() {
         DappContractAdded {
             contract: new_pair,
             is_registrar: false,
-            added_by: context.pair_factory.address(),
+            registrar: context.pair_factory.address(),
         }
     ));
     assert_eq!(
