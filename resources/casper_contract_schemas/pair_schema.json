@@ -1,6 +1,6 @@
 {
   "casper_contract_schema_version": 1,
-  "toolchain": "rustc 1.85.0-nightly (d117b7f21 2024-12-31)",
+  "toolchain": "rustc 1.94.0-nightly (8d670b93d 2025-12-31)",
   "authors": [],
   "repository": null,
   "homepage": null,
@@ -413,6 +413,28 @@
     }
   ],
   "entry_points": [
+    {
+      "name": "initialize",
+      "description": "",
+      "is_mutable": true,
+      "arguments": [
+        {
+          "name": "token0",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        },
+        {
+          "name": "token1",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
     {
       "name": "mint",
       "description": "",

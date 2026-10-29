@@ -1,12 +1,32 @@
 {
   "casper_contract_schema_version": 1,
-  "toolchain": "rustc 1.85.0-nightly (d117b7f21 2024-12-31)",
+  "toolchain": "rustc 1.94.0-nightly (8d670b93d 2025-12-31)",
   "authors": [],
   "repository": null,
   "homepage": null,
   "contract_name": "Factory",
   "contract_version": "0.1.0",
   "types": [
+    {
+      "struct": {
+        "name": "DappRegistryChanged",
+        "description": null,
+        "members": [
+          {
+            "name": "previous_registry",
+            "description": null,
+            "ty": {
+              "Option": "Key"
+            }
+          },
+          {
+            "name": "new_registry",
+            "description": null,
+            "ty": "Key"
+          }
+        ]
+      }
+    },
     {
       "struct": {
         "name": "FactoryInitialized",
@@ -159,6 +179,11 @@
   ],
   "errors": [
     {
+      "name": "CallerNotDappRegistrar",
+      "description": "The caller is not a registrar of the dapp.",
+      "discriminant": 22004
+    },
+    {
       "name": "CallerNotTheNewOwner",
       "description": "The caller is not the new owner.",
       "discriminant": 20002
@@ -169,9 +194,29 @@
       "discriminant": 20001
     },
     {
+      "name": "CannotRemoveDappRegistry",
+      "description": "The dapp registry cannot remove itself.",
+      "discriminant": 22006
+    },
+    {
       "name": "CreatingAPairWithoutMockingIt",
       "description": "",
       "discriminant": 1
+    },
+    {
+      "name": "DappContractAlreadyRegistered",
+      "description": "The contract is already registered. The registry itself counts as registered.",
+      "discriminant": 22001
+    },
+    {
+      "name": "DappContractNotRegistered",
+      "description": "The contract is not registered.",
+      "discriminant": 22002
+    },
+    {
+      "name": "DappRegistryMismatch",
+      "description": "The contract points to a different dapp registry.",
+      "discriminant": 22003
     },
     {
       "name": "Misconfigured",
@@ -182,6 +227,11 @@
       "name": "MissingRole",
       "description": "The role is missing.",
       "discriminant": 20003
+    },
+    {
+      "name": "NotAContract",
+      "description": "The address is not a contract address.",
+      "discriminant": 22000
     },
     {
       "name": "OwnerNotSet",
@@ -200,6 +250,22 @@
     }
   ],
   "entry_points": [
+    {
+      "name": "set_dapp_registry",
+      "description": "Points the factory to another dapp registry.",
+      "is_mutable": true,
+      "arguments": [
+        {
+          "name": "registry",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
     {
       "name": "register_admin",
       "description": "Grants admin role to an address.",
@@ -344,9 +410,22 @@
       "return_ty": "String",
       "is_contract_context": true,
       "access": "public"
+    },
+    {
+      "name": "get_dapp_registry",
+      "description": "Delegated. See `self.dapp.get_dapp_registry()` for details.",
+      "is_mutable": false,
+      "arguments": [],
+      "return_ty": "Key",
+      "is_contract_context": true,
+      "access": "public"
     }
   ],
   "events": [
+    {
+      "name": "DappRegistryChanged",
+      "ty": "DappRegistryChanged"
+    },
     {
       "name": "FactoryInitialized",
       "ty": "FactoryInitialized"
@@ -410,6 +489,12 @@
       },
       {
         "name": "pair_factory",
+        "description": null,
+        "ty": "Key",
+        "optional": false
+      },
+      {
+        "name": "dapp_registry",
         "description": null,
         "ty": "Key",
         "optional": false

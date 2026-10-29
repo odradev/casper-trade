@@ -11,12 +11,15 @@ use odra::prelude::Addressable;
 use odra_cli::{
     cspr, deploy::DeployScript, ContractProvider, DeployedContractsContainer, DeployerExt, OdraCli,
 };
+use odra_modules::dapp::OwnedDappRegistry;
 use odra_modules::wrapped_native::WrappedNativeToken;
 
 mod scenarios;
+use scenarios::dapp_registry::{connect_pair_factory, load_or_deploy_registry, register};
 use scenarios::{
-    AddLiquidity, AddLiquidityCSPR, AddWCSPR, DeployWcspr, SetupPair, SetupSamples, SwapTokens,
-    UpgradeFactory, UpgradePairs, UpgradeRouter,
+    AddLiquidity, AddLiquidityCSPR, AddWCSPR, CheckDappRegistry, CreateDappPair, DeployWcspr,
+    MigrateToDappRegistry, SetupPair, SetupSamples, SwapTokens, UpgradeFactory, UpgradePairs,
+    UpgradeRouter,
 };
 
 /// Deploys all Casper Trade contracts
@@ -34,7 +37,13 @@ impl DeployScript for ContractsDeployScript {
             .address_by_name("WrappedNativeToken")
             .expect("WCSPR not found in container! Run 'deploy-wcspr' or 'add-wcspr' first.");
 
-        let pair_factory = PairFactory::load_or_deploy_with_cfg(
+        let mut dapp_registry = load_or_deploy_registry(env, container).map_err(|e| {
+            odra_cli::deploy::Error::OdraError {
+                message: format!("{:?}", e),
+            }
+        })?;
+
+        let mut pair_factory = PairFactory::load_or_deploy_with_cfg(
             env,
             None,
             NoArgs,
@@ -51,6 +60,7 @@ impl DeployScript for ContractsDeployScript {
             FactoryInitArgs {
                 fee_to: Some(env.get_account(0)), // Set deployer as fee collector
                 pair_factory: pair_factory.address(),
+                dapp_registry: dapp_registry.address(),
             },
             InstallConfig::upgradable::<Factory>(),
             container,
@@ -66,6 +76,7 @@ impl DeployScript for ContractsDeployScript {
             RouterInitArgs {
                 factory: factory.address(),
                 wcspr: wcspr_address,
+                dapp_registry: dapp_registry.address(),
             },
             InstallConfig::upgradable::<Router>(),
             container,
@@ -73,6 +84,17 @@ impl DeployScript for ContractsDeployScript {
         )?;
 
         println!("Router deployed successfully!");
+
+        // Factory and Router point to the registry from their init; the PairFactory points the pairs the
+        // Factory creates to it and adds them.
+        connect_pair_factory(
+            env,
+            &mut dapp_registry,
+            &mut pair_factory,
+            factory.address(),
+        );
+        register(env, &mut dapp_registry, "Factory", factory.address(), false);
+        register(env, &mut dapp_registry, "Router", router.address(), false);
         println!("  Factory: {:?}", router.factory_address());
         println!("  WCSPR: {:?}", router.wcspr());
 
@@ -92,18 +114,29 @@ impl DeployScript for ContractsDeployScript {
 
 /// Main function to run the CLI tool.
 pub fn main() {
-    OdraCli::new()
-        .about("Casper Trade CLI - Automated Market Maker on Casper Network")
+    let mut cli = OdraCli::new();
+    // Contracts deployed by the CreateDappPair scenario.
+    for suffix in ["2", "3"] {
+        cli = cli
+            .named_contract::<SampleToken>(format!("DappTokenA{}", suffix))
+            .named_contract::<SampleToken>(format!("DappTokenB{}", suffix))
+            .named_contract::<Pair>(format!("DappPair{}", suffix));
+    }
+    cli.about("Casper Trade CLI - Automated Market Maker on Casper Network")
         .deploy(ContractsDeployScript)
         .contract::<Factory>()
         .contract::<Router>()
         .contract::<WrappedNativeToken>()
         .contract::<PairFactory>()
+        .contract::<OwnedDappRegistry>()
         .named_contract::<SampleToken>("SampleTokenA".to_string())
         .named_contract::<SampleToken>("SampleTokenB".to_string())
         .named_contract::<Pair>("TokenA_TokenB".to_string())
         .named_contract::<Pair>("TokenA_WCSPR".to_string())
         .named_contract::<Pair>("TokenB_WCSPR".to_string())
+        .named_contract::<SampleToken>("DappTokenA".to_string())
+        .named_contract::<SampleToken>("DappTokenB".to_string())
+        .named_contract::<Pair>("DappPair".to_string())
         .scenario(SetupPair)
         .scenario(AddLiquidity)
         .scenario(AddLiquidityCSPR)
@@ -114,6 +147,9 @@ pub fn main() {
         .scenario(AddWCSPR)
         .scenario(DeployWcspr)
         .scenario(SetupSamples)
+        .scenario(MigrateToDappRegistry)
+        .scenario(CreateDappPair)
+        .scenario(CheckDappRegistry)
         .build()
         .run();
 }

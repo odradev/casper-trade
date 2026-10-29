@@ -9,6 +9,7 @@ use odra::{
 };
 
 use odra_modules::cep18_token::Cep18ContractRef;
+use odra_modules::dapp::DappContractBase;
 use odra_modules::wrapped_native::WrappedNativeTokenContractRef;
 
 use crate::pair::events::CSPRRefunded;
@@ -25,14 +26,29 @@ use crate::{
 pub struct Router {
     factory: Var<Address>,
     wcspr: Var<Address>,
+    dapp: SubModule<DappContractBase>,
 }
 
 #[odra::module]
 impl Router {
     /// Initializes the router with the factory address
-    pub fn init(&mut self, factory: Address, wcspr: Address) {
+    pub fn init(&mut self, factory: Address, wcspr: Address, dapp_registry: Address) {
         self.factory.set(factory);
         self.wcspr.set(wcspr);
+        self.dapp.set_dapp_registry(&dapp_registry);
+    }
+
+    /// Upgrades the router; `dapp_registry` points an already deployed router to the registry.
+    pub fn upgrade(&mut self, dapp_registry: Option<Address>) {
+        if let Some(dapp_registry) = dapp_registry {
+            self.dapp.set_dapp_registry(&dapp_registry);
+        }
+    }
+
+    delegate! {
+        to self.dapp {
+            fn get_dapp_registry(&self) -> Address;
+        }
     }
 
     /// Returns the factory address
@@ -709,6 +725,7 @@ mod tests {
         host::{Deployer, HostEnv, HostRef, NoArgs},
         prelude::Address,
     };
+    use odra_modules::dapp::OwnedDappRegistry;
     use odra_modules::{
         cep18_token::Cep18HostRef,
         wrapped_native::{WrappedNativeToken, WrappedNativeTokenHostRef},
@@ -735,6 +752,7 @@ mod tests {
         let alice = env.get_account(1);
         let bob = env.get_account(2);
         let pair_factory = PairFactory::deploy(&env, NoArgs);
+        let dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
 
         // Deploy the actual Factory contract
         let mut factory = Factory::deploy(
@@ -742,6 +760,7 @@ mod tests {
             FactoryInitArgs {
                 fee_to: None,
                 pair_factory: pair_factory.address(),
+                dapp_registry: dapp_registry.address(),
             },
         );
 
@@ -754,6 +773,7 @@ mod tests {
             RouterInitArgs {
                 factory: factory.address(),
                 wcspr: wcspr.address(),
+                dapp_registry: dapp_registry.address(),
             },
         );
 
