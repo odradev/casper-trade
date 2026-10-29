@@ -34,7 +34,7 @@ impl Scenario for AddWCSPR {
         // Get the package hash from args
         let package_hash_str = args.get_single::<String>("package_hash")?;
 
-        odra_cli::log(format!("Adding existing WCSPR contract to container"));
+        odra_cli::log("Adding existing WCSPR contract to container");
         odra_cli::log(format!("  Package Hash: {}", package_hash_str));
 
         // Parse the package hash as an address

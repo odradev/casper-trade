@@ -85,7 +85,8 @@ impl DeployScript for ContractsDeployScript {
 
         println!("Router deployed successfully!");
 
-        // The contracts join the dapp as they are; the PairFactory adds the pairs the Factory creates.
+        // Factory and Router point to the registry from their init; the PairFactory points the pairs the
+        // Factory creates to it and adds them.
         connect_pair_factory(
             env,
             &mut dapp_registry,
