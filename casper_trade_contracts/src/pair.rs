@@ -613,7 +613,6 @@ mod tests {
         );
 
         // The factory registers the pairs it creates.
-
         dapp_registry.add_dapp_contract(&factory.address(), true);
         let token0 = SampleToken::deploy(
             &env,

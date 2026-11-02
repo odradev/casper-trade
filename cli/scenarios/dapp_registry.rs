@@ -49,7 +49,8 @@ pub fn load_or_deploy_registry(
     Ok(registry)
 }
 
-/// Adds the contract to the registry unless it is already there.
+/// Adds the contract to the registry unless it is already there. A contract registered with the other
+/// registrar role (by an earlier version of the dapp registry) is removed and added again.
 pub fn register(
     env: &HostEnv,
     registry: &mut OwnedDappRegistryHostRef,
@@ -58,8 +59,13 @@ pub fn register(
     is_registrar: bool,
 ) {
     if registry.is_dapp_contract(&address) {
-        odra_cli::log(format!("  {} already registered", name));
-        return;
+        if registry.is_dapp_registrar(&address) == is_registrar {
+            odra_cli::log(format!("  {} already registered", name));
+            return;
+        }
+        env.set_gas(cspr!(10));
+        registry.remove_dapp_contract(&address);
+        odra_cli::log(format!("✓ {} removed to change its registrar role", name));
     }
     env.set_gas(cspr!(10));
     registry.add_dapp_contract(&address, is_registrar);
@@ -183,6 +189,12 @@ impl Scenario for MigrateToDappRegistry {
         // a re-run after an interrupted migration upgrades it again.
         let pairs = pairs(env, container)?;
         let mut pair_factory = container.contract_ref::<PairFactory>(env)?;
+        // An earlier version of the dapp registry registered the PairFactory as a registrar.
+        if registry.is_dapp_contract(&pair_factory.address()) {
+            env.set_gas(cspr!(10));
+            registry.remove_dapp_contract(&pair_factory.address());
+            odra_cli::log("✓ PairFactory removed from the dapp");
+        }
         if factory_migrated && pairs.iter().all(|(_, pair)| points(&pair.address())) {
             odra_cli::log("  PairFactory already upgraded");
         } else {
@@ -300,7 +312,7 @@ pub struct CheckDappRegistry;
 
 impl ScenarioMetadata for CheckDappRegistry {
     const NAME: &'static str = "CheckDappRegistry";
-    const DESCRIPTION: &'static str = "Checks that Factory, Router and every pair of the Factory belong to the dapp and point to it, and that the Factory is a registrar";
+    const DESCRIPTION: &'static str = "Checks that Factory, Router and every pair of the Factory belong to the dapp and point to it, that the Factory is a registrar and that the PairFactory is not registered";
 }
 
 impl Scenario for CheckDappRegistry {
@@ -345,6 +357,11 @@ impl Scenario for CheckDappRegistry {
             "Factory registered as a registrar".to_string(),
             registry.is_dapp_registrar(&factory),
         )];
+        let pair_factory = container.contract_ref::<PairFactory>(env)?.address();
+        checks.push((
+            "PairFactory not registered".to_string(),
+            !registry.is_dapp_contract(&pair_factory),
+        ));
         let router = container.contract_ref::<Router>(env)?.address();
         let mut members = vec![
             ("Factory".to_string(), factory),
