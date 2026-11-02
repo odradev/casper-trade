@@ -23,7 +23,7 @@ pub struct Factory {
     pairs: Mapping<(Address, Address), Address>,
     pair_factory: Var<Address>,
     access_control: SubModule<AccessControl>,
-    dapp: SubModule<DappContractBase>,
+    dapp_register: SubModule<DappContractBase>,
 }
 
 #[odra::module]
@@ -37,7 +37,7 @@ impl Factory {
         self.pair_factory.set(pair_factory);
         self.access_control
             .unchecked_grant_role(&DEFAULT_ADMIN_ROLE, &caller);
-        self.dapp.set_dapp_registry(&dapp_registry);
+        self.dapp_register.set_dapp_registry(&dapp_registry);
 
         self.env().emit_event(FactoryInitialized {
             fee_to,
@@ -48,18 +48,18 @@ impl Factory {
     /// Upgrades the factory; `dapp_registry` points an already deployed factory to the registry.
     pub fn upgrade(&mut self, dapp_registry: Option<Address>) {
         if let Some(dapp_registry) = dapp_registry {
-            self.dapp.set_dapp_registry(&dapp_registry);
+            self.dapp_register.set_dapp_registry(&dapp_registry);
         }
     }
 
     /// Points the factory to another dapp registry.
     pub fn set_dapp_registry(&mut self, registry: &Address) {
         self.assert_admin();
-        self.dapp.set_dapp_registry(registry);
+        self.dapp_register.set_dapp_registry(registry);
     }
 
     delegate! {
-        to self.dapp {
+        to self.dapp_register {
             fn get_dapp_registry(&self) -> Address;
         }
     }
@@ -127,8 +127,11 @@ impl Factory {
                         self.env().self_address(),
                         token0,
                         token1,
+                        self.dapp_register.register_address(),
                     )
                     .0;
+                // The factory is a registrar of the dapp: the pair points to the registry and joins it.
+                self.dapp_register.register(pair);
                 self.pairs.set(&(token0, token1), pair);
                 self.env().emit_event(PairCreated {
                     token0,
@@ -203,7 +206,7 @@ mod tests {
 
         let pair_factory = PairFactory::deploy(&env, NoArgs);
 
-        let dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
+        let mut dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
         let mut factory = Factory::deploy(
             &env,
             FactoryInitArgs {
@@ -212,6 +215,8 @@ mod tests {
                 dapp_registry: dapp_registry.address(),
             },
         );
+        // The factory registers the pairs it creates.
+        dapp_registry.add_dapp_contract(&factory.address(), true);
 
         // Assert: deployer is automatically an admin after init
         assert!(factory.is_admin(deployer));

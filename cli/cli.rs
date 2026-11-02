@@ -15,7 +15,7 @@ use odra_modules::dapp::OwnedDappRegistry;
 use odra_modules::wrapped_native::WrappedNativeToken;
 
 mod scenarios;
-use scenarios::dapp_registry::{connect_pair_factory, load_or_deploy_registry, register};
+use scenarios::dapp_registry::{load_or_deploy_registry, register};
 use scenarios::{
     AddLiquidity, AddLiquidityCSPR, AddWCSPR, CheckDappRegistry, CreateDappPair, DeployWcspr,
     MigrateToDappRegistry, SetupPair, SetupSamples, SwapTokens, UpgradeFactory, UpgradePairs,
@@ -43,7 +43,7 @@ impl DeployScript for ContractsDeployScript {
             }
         })?;
 
-        let mut pair_factory = PairFactory::load_or_deploy_with_cfg(
+        let pair_factory = PairFactory::load_or_deploy_with_cfg(
             env,
             None,
             NoArgs,
@@ -85,15 +85,9 @@ impl DeployScript for ContractsDeployScript {
 
         println!("Router deployed successfully!");
 
-        // Factory and Router point to the registry from their init; the PairFactory points the pairs the
-        // Factory creates to it and adds them.
-        connect_pair_factory(
-            env,
-            &mut dapp_registry,
-            &mut pair_factory,
-            factory.address(),
-        );
-        register(env, &mut dapp_registry, "Factory", factory.address(), false);
+        // Factory and Router point to the registry from their init; the Factory is a registrar, so it
+        // passes the registry to the pairs it creates and adds them to the dapp.
+        register(env, &mut dapp_registry, "Factory", factory.address(), true);
         register(env, &mut dapp_registry, "Router", router.address(), false);
         println!("  Factory: {:?}", router.factory_address());
         println!("  WCSPR: {:?}", router.wcspr());

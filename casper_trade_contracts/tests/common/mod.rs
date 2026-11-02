@@ -37,7 +37,7 @@ pub fn setup() -> TestContext {
     let owner = env.get_account(0);
     let alice = env.get_account(1);
     let pair_factory = PairFactory::deploy(&env, NoArgs);
-    let dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
+    let mut dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
 
     // Deploy the actual Factory contract
     let mut factory = Factory::deploy(
@@ -48,6 +48,8 @@ pub fn setup() -> TestContext {
             dapp_registry: dapp_registry.address(),
         },
     );
+    // The factory registers the pairs it creates.
+    dapp_registry.add_dapp_contract(&factory.address(), true);
 
     // Deploy WCSPR contract
     let wcspr = WrappedNativeToken::deploy(&env, NoArgs);
@@ -82,6 +84,13 @@ pub fn setup() -> TestContext {
             initial_supply: expand_to_18_decimals(10000),
         },
     );
+
+    // The tests expect the tokens in the order the factory sorts them.
+    let (token0, token1) = if token0.address() < token1.address() {
+        (token0, token1)
+    } else {
+        (token1, token0)
+    };
 
     // Deploy WCSPR partner token
     let wcspr_partner = SampleToken::deploy(

@@ -4,6 +4,7 @@ use odra::{
     ContractRef,
 };
 use odra_modules::cep18_token::{Cep18, Cep18ContractRef};
+use odra_modules::dapp::DappContractBase;
 
 use crate::pair::events::{PairInitialized, ProtocolFeeMinted, SkimExcess};
 use crate::utils::{contract_name, contract_symbol};
@@ -21,7 +22,7 @@ pub mod errors;
 pub mod events;
 
 pub const MINIMUM_LIQUIDITY: u64 = 1000;
-pub const NEWEST_REVISION: u8 = 2;
+pub const NEWEST_REVISION: u8 = 3;
 
 pub const TOKEN0_KEY: &str = "token0";
 pub const TOKEN1_KEY: &str = "token1";
@@ -42,6 +43,7 @@ pub struct Pair {
     pub price0_cumulative_last: Var<U256>,
     pub price1_cumulative_last: Var<U256>,
     pub revision: Var<u8>,
+    pub dapp: SubModule<DappContractBase>,
 }
 
 /// Module implementation
@@ -58,10 +60,22 @@ impl Pair {
             fn name(&self) -> String;
             fn symbol(&self) -> String;
         }
+        to self.dapp {
+            fn get_dapp_registry(&self) -> Address;
+        }
     }
 
-    pub fn init(&mut self, factory: Address, token0: Address, token1: Address) {
+    /// Initializes the pair; the factory passes the dapp registry it belongs to.
+    pub fn init(
+        &mut self,
+        factory: Address,
+        token0: Address,
+        token1: Address,
+        dapp_registry: Address,
+    ) {
         self.factory.set(factory);
+        self.revision.set(NEWEST_REVISION);
+        self.dapp.set_dapp_registry(&dapp_registry);
 
         self.token0.set(token0);
         self.token1.set(token1);
@@ -110,6 +124,12 @@ impl Pair {
 
             self.env().set_named_value(TOKEN0_KEY, token0);
             self.env().set_named_value(TOKEN1_KEY, token1);
+        }
+
+        if current_revision < 3 {
+            // Pairs created before the dapp registry join the registry their factory points to.
+            let dapp_registry = self.factory_contract().get_dapp_registry();
+            self.dapp.set_dapp_registry(&dapp_registry);
         }
 
         self.revision.set(NEWEST_REVISION);
@@ -581,7 +601,7 @@ mod tests {
         let alice = env.get_account(1);
         let bob = env.get_account(2);
         let pair_factory = PairFactory::deploy(&env, NoArgs);
-        let dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
+        let mut dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
 
         let mut factory = Factory::deploy(
             &env,
@@ -591,6 +611,10 @@ mod tests {
                 dapp_registry: dapp_registry.address(),
             },
         );
+
+        // The factory registers the pairs it creates.
+
+        dapp_registry.add_dapp_contract(&factory.address(), true);
         let token0 = SampleToken::deploy(
             &env,
             SampleTokenInitArgs {
