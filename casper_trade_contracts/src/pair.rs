@@ -4,6 +4,7 @@ use odra::{
     ContractRef,
 };
 use odra_modules::cep18_token::{Cep18, Cep18ContractRef};
+use odra_modules::dapp::DappContractBase;
 
 use crate::pair::events::{PairInitialized, ProtocolFeeMinted, SkimExcess};
 use crate::utils::{contract_name, contract_symbol};
@@ -21,7 +22,7 @@ pub mod errors;
 pub mod events;
 
 pub const MINIMUM_LIQUIDITY: u64 = 1000;
-pub const NEWEST_REVISION: u8 = 2;
+pub const NEWEST_REVISION: u8 = 3;
 
 pub const TOKEN0_KEY: &str = "token0";
 pub const TOKEN1_KEY: &str = "token1";
@@ -42,6 +43,7 @@ pub struct Pair {
     pub price0_cumulative_last: Var<U256>,
     pub price1_cumulative_last: Var<U256>,
     pub revision: Var<u8>,
+    pub dapp: SubModule<DappContractBase>,
 }
 
 /// Module implementation
@@ -58,10 +60,22 @@ impl Pair {
             fn name(&self) -> String;
             fn symbol(&self) -> String;
         }
+        to self.dapp {
+            fn get_dapp_registry(&self) -> Address;
+        }
     }
 
-    pub fn init(&mut self, factory: Address, token0: Address, token1: Address) {
+    /// Initializes the pair; the factory passes the dapp registry it belongs to.
+    pub fn init(
+        &mut self,
+        factory: Address,
+        token0: Address,
+        token1: Address,
+        dapp_registry: Address,
+    ) {
         self.factory.set(factory);
+        self.revision.set(NEWEST_REVISION);
+        self.dapp.set_dapp_registry(&dapp_registry);
 
         self.token0.set(token0);
         self.token1.set(token1);
@@ -110,6 +124,15 @@ impl Pair {
 
             self.env().set_named_value(TOKEN0_KEY, token0);
             self.env().set_named_value(TOKEN1_KEY, token1);
+        }
+
+        // The pair belongs to the registry its factory points to. A pair created before the dapp
+        // registry (revision < 3, no registry set yet) joins it; a pair already in a registry follows
+        // its factory to another one, which is how a forced migration moves the whole dapp.
+        let factory_registry = self.factory_contract().get_dapp_registry();
+        let registry_set = current_revision >= 3;
+        if !registry_set || self.dapp.get_dapp_registry() != factory_registry {
+            self.dapp.set_dapp_registry(&factory_registry);
         }
 
         self.revision.set(NEWEST_REVISION);
@@ -551,11 +574,13 @@ impl Pair {
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::sort_tokens;
     use crate::{
         factory::{Factory, FactoryInitArgs},
         sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs},
         utils::{encode_price, expand_to_18_decimals},
     };
+    use odra_modules::dapp::OwnedDappRegistry;
 
     use super::*;
     use odra::host::{HostRef, NoArgs};
@@ -580,14 +605,19 @@ mod tests {
         let alice = env.get_account(1);
         let bob = env.get_account(2);
         let pair_factory = PairFactory::deploy(&env, NoArgs);
+        let mut dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
 
         let mut factory = Factory::deploy(
             &env,
             FactoryInitArgs {
                 fee_to: if fee_on { Some(bob) } else { None },
                 pair_factory: pair_factory.address(),
+                dapp_registry: dapp_registry.address(),
             },
         );
+
+        // The factory registers the pairs it creates.
+        dapp_registry.add_dapp_contract(&factory.address(), true);
         let token0 = SampleToken::deploy(
             &env,
             SampleTokenInitArgs {
@@ -606,6 +636,8 @@ mod tests {
                 initial_supply: expand_to_18_decimals(10000),
             },
         );
+        // The tests expect the tokens in the order the factory sorts them.
+        let (token0, token1) = sort_tokens(token0, token1);
         let pair_address = factory.create_pair(token0.address(), token1.address());
         let pair = PairHostRef::new(pair_address, env.clone());
 

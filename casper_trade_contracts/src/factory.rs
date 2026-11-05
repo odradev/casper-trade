@@ -2,11 +2,12 @@ use crate::factory::errors::FactoryError;
 use crate::pair::events::{FactoryInitialized, FeeToUpdated};
 use crate::pair::PairFactoryContractRef;
 use crate::router::errors::LibraryError::{IdenticalAddresses, ZeroAddress};
-use crate::utils::{contract_name, contract_symbol, zero_address};
+use crate::utils::{contract_name, contract_symbol, sort_tokens, zero_address};
 use odra::prelude::*;
 use odra::ContractRef;
 use odra_modules::access::{AccessControl, DEFAULT_ADMIN_ROLE};
 use odra_modules::cep18_token::Cep18ContractRef;
+use odra_modules::dapp::DappContractBase;
 
 #[odra::event]
 pub struct PairCreated {
@@ -22,6 +23,7 @@ pub struct Factory {
     pairs: Mapping<(Address, Address), Address>,
     pair_factory: Var<Address>,
     access_control: SubModule<AccessControl>,
+    dapp: SubModule<DappContractBase>,
 }
 
 #[odra::module]
@@ -29,17 +31,37 @@ impl Factory {
     /// Initializes the factory with the given fee to address.
     ///
     /// If fee to is None, the factory will not charge any fees.
-    pub fn init(&mut self, fee_to: Option<Address>, pair_factory: Address) {
+    pub fn init(&mut self, fee_to: Option<Address>, pair_factory: Address, dapp_registry: Address) {
         let caller = self.env().caller();
         self.fee_to.set(fee_to);
         self.pair_factory.set(pair_factory);
         self.access_control
             .unchecked_grant_role(&DEFAULT_ADMIN_ROLE, &caller);
+        self.dapp.set_dapp_registry(&dapp_registry);
 
         self.env().emit_event(FactoryInitialized {
             fee_to,
             pair_factory,
         });
+    }
+
+    /// Upgrades the factory; `dapp_registry` points an already deployed factory to the registry.
+    pub fn upgrade(&mut self, dapp_registry: Option<Address>) {
+        if let Some(dapp_registry) = dapp_registry {
+            self.dapp.set_dapp_registry(&dapp_registry);
+        }
+    }
+
+    /// Points the factory to another dapp registry.
+    pub fn set_dapp_registry(&mut self, registry: &Address) {
+        self.assert_admin();
+        self.dapp.set_dapp_registry(registry);
+    }
+
+    delegate! {
+        to self.dapp {
+            fn get_dapp_registry(&self) -> Address;
+        }
     }
 
     /// Grants admin role to an address.
@@ -82,7 +104,7 @@ impl Factory {
 
         let zero_address = zero_address();
 
-        let (token0, token1) = self.sort_tokens(token_a, token_b);
+        let (token0, token1) = sort_tokens(token_a, token_b);
         if token0 == zero_address {
             self.revert(ZeroAddress)
         }
@@ -105,8 +127,11 @@ impl Factory {
                         self.env().self_address(),
                         token0,
                         token1,
+                        self.dapp.register_address(),
                     )
                     .0;
+                // The factory is a registrar of the dapp: the pair points to the registry and joins it.
+                self.dapp.register(pair);
                 self.pairs.set(&(token0, token1), pair);
                 self.env().emit_event(PairCreated {
                     token0,
@@ -122,26 +147,17 @@ impl Factory {
 
     /// Returns the pair address for the given tokens, if it exists.
     pub fn get_pair(&self, token_a: Address, token_b: Address) -> Option<Address> {
-        let (token0, token1) = self.sort_tokens(token_a, token_b);
+        let (token0, token1) = sort_tokens(token_a, token_b);
         self.pairs.get(&(token0, token1))
     }
 
     /// Returns the pair name under which it was deployed by factory.
     pub fn get_pair_name(&self, token_a: Address, token_b: Address) -> String {
-        let (token0, token1) = self.sort_tokens(token_a, token_b);
+        let (token0, token1) = sort_tokens(token_a, token_b);
 
         let token0_instance = Cep18ContractRef::new(self.env(), token0);
         let token1_instance = Cep18ContractRef::new(self.env(), token1);
         contract_name(&token0_instance.symbol(), &token1_instance.symbol())
-    }
-
-    /// Sorts two token addresses to ensure consistent ordering.
-    fn sort_tokens(&self, token_a: Address, token_b: Address) -> (Address, Address) {
-        if token_a < token_b {
-            (token_a, token_b)
-        } else {
-            (token_b, token_a)
-        }
     }
 }
 
@@ -169,6 +185,7 @@ mod tests {
     use super::*;
     use crate::pair::PairFactory;
     use odra::host::{Deployer, NoArgs};
+    use odra_modules::dapp::OwnedDappRegistry;
 
     #[test]
     fn test_admin_add_and_remove() {
@@ -179,13 +196,18 @@ mod tests {
         let non_admin = env.get_account(2);
 
         let pair_factory = PairFactory::deploy(&env, NoArgs);
+
+        let mut dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
         let mut factory = Factory::deploy(
             &env,
             FactoryInitArgs {
                 fee_to: None,
                 pair_factory: pair_factory.address(),
+                dapp_registry: dapp_registry.address(),
             },
         );
+        // The factory registers the pairs it creates.
+        dapp_registry.add_dapp_contract(&factory.address(), true);
 
         // Assert: deployer is automatically an admin after init
         assert!(factory.is_admin(deployer));

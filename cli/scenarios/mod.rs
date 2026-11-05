@@ -1,6 +1,7 @@
 pub mod add_liquidity;
 pub mod add_liquidity_cspr;
 pub mod add_wcspr;
+pub mod dapp_registry;
 pub mod deploy_wcspr;
 pub mod setup_pair;
 pub mod setup_samples;
@@ -13,6 +14,7 @@ pub mod utils;
 pub use add_liquidity::AddLiquidity;
 pub use add_liquidity_cspr::AddLiquidityCSPR;
 pub use add_wcspr::AddWCSPR;
+pub use dapp_registry::{CheckDappRegistry, CreateDappPair, MigrateToDappRegistry};
 pub use deploy_wcspr::DeployWcspr;
 pub use setup_pair::SetupPair;
 pub use setup_samples::SetupSamples;

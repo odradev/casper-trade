@@ -7,11 +7,12 @@ use casper_trade_contracts::factory::{Factory, FactoryHostRef, FactoryInitArgs};
 use casper_trade_contracts::pair::{PairFactory, PairFactoryHostRef, PairHostRef};
 use casper_trade_contracts::router::{Router, RouterHostRef, RouterInitArgs};
 use casper_trade_contracts::sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs};
-use casper_trade_contracts::utils::expand_to_18_decimals;
+use casper_trade_contracts::utils::{expand_to_18_decimals, sort_tokens};
 use odra::casper_types::U256;
-use odra::host::{Deployer, HostEnv, HostRef, NoArgs};
+use odra::host::{Deployer, HostEnv, HostRef, InstallConfig, NoArgs};
 use odra::prelude::*;
 use odra_modules::cep18_token::Cep18HostRef;
+use odra_modules::dapp::{OwnedDappRegistry, OwnedDappRegistryHostRef};
 use odra_modules::wrapped_native::{WrappedNativeToken, WrappedNativeTokenHostRef};
 
 #[allow(dead_code)]
@@ -20,6 +21,7 @@ pub struct TestContext {
     pub factory: FactoryHostRef,
     pub pair_factory: PairFactoryHostRef,
     pub router: RouterHostRef,
+    pub dapp_registry: OwnedDappRegistryHostRef,
     pub token0: SampleTokenHostRef,
     pub token1: SampleTokenHostRef,
     pub wcspr: WrappedNativeTokenHostRef,
@@ -35,26 +37,33 @@ pub fn setup() -> TestContext {
     let owner = env.get_account(0);
     let alice = env.get_account(1);
     let pair_factory = PairFactory::deploy(&env, NoArgs);
+    let mut dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
 
-    // Deploy the actual Factory contract
-    let mut factory = Factory::deploy(
+    // Deploy the actual Factory contract; upgradable like on a live network, so the tests can upgrade it.
+    let mut factory = Factory::deploy_with_cfg(
         &env,
         FactoryInitArgs {
             fee_to: None,
             pair_factory: pair_factory.address(),
+            dapp_registry: dapp_registry.address(),
         },
+        InstallConfig::upgradable::<Factory>(),
     );
+    // The factory registers the pairs it creates.
+    dapp_registry.add_dapp_contract(&factory.address(), true);
 
     // Deploy WCSPR contract
     let wcspr = WrappedNativeToken::deploy(&env, NoArgs);
 
-    // Deploy Router with the factory and wcspr address
-    let router = Router::deploy(
+    // Deploy Router with the factory and wcspr address; upgradable like the Factory.
+    let router = Router::deploy_with_cfg(
         &env,
         RouterInitArgs {
             factory: factory.address(),
             wcspr: wcspr.address(),
+            dapp_registry: dapp_registry.address(),
         },
+        InstallConfig::upgradable::<Router>(),
     );
 
     // Deploy tokens
@@ -78,6 +87,9 @@ pub fn setup() -> TestContext {
         },
     );
 
+    // The tests expect the tokens in the order the factory sorts them.
+    let (token0, token1) = sort_tokens(token0, token1);
+
     // Deploy WCSPR partner token
     let wcspr_partner = SampleToken::deploy(
         &env,
@@ -98,6 +110,7 @@ pub fn setup() -> TestContext {
         factory,
         pair_factory,
         router,
+        dapp_registry,
         token0,
         token1,
         wcspr,

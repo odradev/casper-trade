@@ -1,6 +1,7 @@
 mod common;
 
 use common::setup;
+use odra::prelude::*;
 
 // (HAL-06) UNDISTINGUISHABLE LP TOKEN METADATA
 // ACROSS ALL PAIRS
@@ -15,10 +16,15 @@ fn test_undistinguishable_lp_token_metadata() {
     // assert_eq!(pair_symbol, "LP".to_string());
     // assert_eq!(pair_name, "CasperTradeV2Pair".to_string());
 
-    // The adjustment generates unique names and symbols for the pair:
+    // The adjustment generates unique names and symbols for the pair, built from its tokens in the
+    // order the factory sorts them (`setup` returns them in that order):
+    let (first, second) = (&context.token0, &context.token1);
     assert_eq!(
         pair_name,
-        "CSPR.trade: Sample Token A - Sample Token B".to_string()
+        format!("CSPR.trade: {} - {}", first.name(), second.name())
     );
-    assert_eq!(pair_symbol, "STA-STB LP");
+    assert_eq!(
+        pair_symbol,
+        format!("{}-{} LP", first.symbol(), second.symbol())
+    );
 }
