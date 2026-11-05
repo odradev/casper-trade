@@ -715,6 +715,7 @@ impl Router {
 mod tests {
     use super::*;
     use crate::pair::PairFactory;
+    use crate::utils::sort_tokens;
     use crate::{
         factory::{Factory, FactoryHostRef, FactoryInitArgs},
         pair::{PairHostRef, MINIMUM_LIQUIDITY},
@@ -801,11 +802,7 @@ mod tests {
         );
 
         // The tests expect the tokens in the order the factory sorts them.
-        let (token0, token1) = if token0.address() < token1.address() {
-            (token0, token1)
-        } else {
-            (token1, token0)
-        };
+        let (token0, token1) = sort_tokens(token0, token1);
 
         // Deploy WCSPR partner token (equivalent to WETHPartner in fixtures.ts)
         let wcspr_partner = SampleToken::deploy(

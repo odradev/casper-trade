@@ -5,7 +5,7 @@ use casper_trade_contracts::sample_tokens::{SampleToken, SampleTokenInitArgs};
 use odra::casper_types::bytesrepr::{Bytes, FromBytes};
 use odra::casper_types::U256;
 use odra::host::{Deployer, HostEnv, HostRef, InstallConfig, NoArgs};
-use odra::prelude::{Address, Addressable, BTreeMap};
+use odra::prelude::{Address, Addressable, BTreeMap, OdraResult};
 use odra::schema::casper_contract_schema::NamedCLType;
 use odra_cli::{
     cspr,
@@ -90,6 +90,9 @@ fn dapp_registry_of(env: &HostEnv, contract: &Address) -> Option<Address> {
 /// Every pair of the dapp: the pairs the Factory announced with `PairCreated`, read from its events on
 /// the chain, so the contracts file need not list them all (e.g. pairs created through the Router). A
 /// pair the contracts file lists keeps its name from there.
+///
+/// A read of the events that fails is an error, not an empty list: the host reports no events for a
+/// Factory it cannot read, and a migration or a check that saw no pairs would wrongly succeed.
 fn pairs(
     env: &HostEnv,
     container: &DeployedContractsContainer,
@@ -101,12 +104,17 @@ fn pairs(
         .filter(|contract| contract.name() == "Pair")
         .map(|contract| (contract.address(), contract.key_name()))
         .collect();
+    let events_count = env.events_count(&factory);
+    // A Factory that points to a registry has emitted at least `DappRegistryChanged`.
+    if events_count == 0 {
+        return Err(pairs_read_error("the Factory reports no events"));
+    }
     let mut pairs = vec![];
-    for index in 0..env.events_count(&factory) {
+    for index in 0..events_count {
+        let bytes = env
+            .get_event_bytes(&factory, index)
+            .map_err(|e| pairs_read_error(&format!("event {} of the Factory: {:?}", index, e)))?;
         // The Factory emits other events too; only `PairCreated` parses.
-        let Ok(bytes) = env.get_event_bytes(&factory, index) else {
-            continue;
-        };
         let Ok((event, _)) = PairCreated::from_bytes(&bytes) else {
             continue;
         };
@@ -116,7 +124,25 @@ fn pairs(
             .unwrap_or(event.contract_name);
         pairs.push((name, PairHostRef::new(event.pair, env.clone())));
     }
+    // Every pair of the contracts file was created by this Factory, so each one has its event.
+    let missing: Vec<&str> = names
+        .iter()
+        .filter(|(address, _)| !pairs.iter().any(|(_, pair)| pair.address() == **address))
+        .map(|(_, name)| name.as_str())
+        .collect();
+    if !missing.is_empty() {
+        return Err(pairs_read_error(&format!(
+            "no PairCreated event for the pairs {} of the contracts file",
+            missing.join(", ")
+        )));
+    }
     Ok(pairs)
+}
+
+fn pairs_read_error(what: &str) -> Error {
+    Error::OdraError {
+        message: format!("Cannot read the pairs of the Factory: {}", what),
+    }
 }
 
 pub struct MigrateToDappRegistry;
@@ -147,47 +173,34 @@ impl Scenario for MigrateToDappRegistry {
         let registry_existed = container.contract_ref::<OwnedDappRegistry>(env).is_ok();
         let mut registry = load_or_deploy_registry(env, container)?;
         let registry_address = registry.address();
-        let dapp_registry = Some(registry_address);
         if force && registry_existed {
-            odra_cli::log(format!(
-                "Upgrading OwnedDappRegistry at {:?}...",
-                registry_address
-            ));
-            env.set_gas(cspr!(500));
-            OwnedDappRegistry::try_upgrade(env, registry_address, NoArgs)?;
-            odra_cli::log("✓ OwnedDappRegistry upgraded");
+            upgrade("OwnedDappRegistry", registry_address, || {
+                env.set_gas(cspr!(500));
+                OwnedDappRegistry::try_upgrade(env, registry_address, NoArgs)
+            })?;
         }
-        // Whether a contract points to the registry, read from its `__dapp->registry` on the chain.
-        let points = |address: &Address| dapp_registry_of(env, address) == dapp_registry;
 
-        // Factory and Router point to the registry after an upgrade.
+        // A contract is up to date once it points to the registry, read from its `__dapp->registry`
+        // on the chain; a forced migration upgrades it anyway.
+        let dapp_registry = Some(registry_address);
+        let up_to_date =
+            |address: &Address| !force && dapp_registry_of(env, address) == dapp_registry;
+
         let factory = container.contract_ref::<Factory>(env)?.address();
-        let factory_migrated = !force && points(&factory);
-        if factory_migrated {
-            odra_cli::log("  Factory already upgraded");
-        } else {
-            odra_cli::log(format!("Upgrading Factory at {:?}...", factory));
+        let factory_was_up_to_date = up_to_date(&factory);
+        upgrade_unless(factory_was_up_to_date, "Factory", factory, || {
             env.set_gas(cspr!(500));
-            Factory::try_upgrade(env, factory, FactoryUpgradeArgs { dapp_registry })?;
-            odra_cli::log("✓ Factory upgraded");
-        }
+            Factory::try_upgrade(env, factory, FactoryUpgradeArgs { dapp_registry })
+        })?;
         let router = container.contract_ref::<Router>(env)?.address();
-        if !force && points(&router) {
-            odra_cli::log("  Router already upgraded");
-        } else {
-            odra_cli::log(format!("Upgrading Router at {:?}...", router));
+        upgrade_unless(up_to_date(&router), "Router", router, || {
             env.set_gas(cspr!(500));
-            Router::try_upgrade(env, router, RouterUpgradeArgs { dapp_registry })?;
-            odra_cli::log("✓ Router upgraded");
-        }
+            Router::try_upgrade(env, router, RouterUpgradeArgs { dapp_registry })
+        })?;
         // The Factory registers the pairs it creates.
         register(env, &mut registry, "Factory", factory, true);
         register(env, &mut registry, "Router", router, false);
 
-        // The PairFactory deploys and upgrades the pairs with the Pair code it carries, so it needs
-        // the new code while there is anything to migrate. It has no dapp state to tell that apart, so
-        // a re-run after an interrupted migration upgrades it again.
-        let pairs = pairs(env, container)?;
         let mut pair_factory = container.contract_ref::<PairFactory>(env)?;
         // An earlier version of the dapp registry registered the PairFactory as a registrar.
         if registry.is_dapp_contract(&pair_factory.address()) {
@@ -195,36 +208,68 @@ impl Scenario for MigrateToDappRegistry {
             registry.remove_dapp_contract(&pair_factory.address());
             odra_cli::log("✓ PairFactory removed from the dapp");
         }
-        if factory_migrated && pairs.iter().all(|(_, pair)| points(&pair.address())) {
-            odra_cli::log("  PairFactory already upgraded");
-        } else {
-            odra_cli::log(format!(
-                "Upgrading PairFactory at {:?}...",
-                pair_factory.address()
-            ));
-            env.set_gas(cspr!(800));
-            PairFactory::try_upgrade(env, pair_factory.address(), NoArgs)?;
-            odra_cli::log("✓ PairFactory upgraded");
-        }
-
-        // An upgraded pair reads the registry from the Factory.
-        for (name, pair) in pairs {
-            if !force && points(&pair.address()) {
-                odra_cli::log(format!("  Pair {} already upgraded", name));
-            } else {
-                // The PairFactory keys its children by the pair symbol.
-                let symbol = pair.symbol();
-                odra_cli::log(format!("Upgrading pair {} ({})...", name, symbol));
+        // The PairFactory carries the Pair code the pairs are deployed and upgraded with, and has no
+        // dapp state of its own to tell its version. It counts as up to date once an earlier run
+        // upgraded the Factory and the pairs; with no pairs yet, it is upgraded on every run.
+        let pairs = pairs(env, container)?;
+        let pair_factory_up_to_date = factory_was_up_to_date
+            && !pairs.is_empty()
+            && pairs.iter().all(|(_, pair)| up_to_date(&pair.address()));
+        upgrade_unless(
+            pair_factory_up_to_date,
+            "PairFactory",
+            pair_factory.address(),
+            || {
                 env.set_gas(cspr!(800));
-                pair_factory.try_upgrade_child_contract(symbol)?;
-                odra_cli::log(format!("✓ Pair {} upgraded", name));
-            }
+                PairFactory::try_upgrade(env, pair_factory.address(), NoArgs)
+            },
+        )?;
+
+        // An upgraded pair takes the registry from the Factory.
+        for (name, pair) in pairs {
+            let pair_name = format!("Pair {}", name);
+            upgrade_unless(
+                up_to_date(&pair.address()),
+                &pair_name,
+                pair.address(),
+                || {
+                    // The PairFactory keys its children by the pair symbol.
+                    env.set_gas(cspr!(800));
+                    pair_factory.try_upgrade_child_contract(pair.symbol())
+                },
+            )?;
             register(env, &mut registry, &name, pair.address(), false);
         }
 
         odra_cli::log("✓ Migration to the dapp registry completed");
         Ok(())
     }
+}
+
+/// Upgrades the contract unless it is up to date, logging either way.
+fn upgrade_unless<T>(
+    up_to_date: bool,
+    name: &str,
+    address: Address,
+    upgrade_contract: impl FnOnce() -> OdraResult<T>,
+) -> Result<(), Error> {
+    if up_to_date {
+        odra_cli::log(format!("  {} already upgraded", name));
+        return Ok(());
+    }
+    upgrade(name, address, upgrade_contract)
+}
+
+/// Upgrades the contract, logging the start and the end.
+fn upgrade<T>(
+    name: &str,
+    address: Address,
+    upgrade_contract: impl FnOnce() -> OdraResult<T>,
+) -> Result<(), Error> {
+    odra_cli::log(format!("Upgrading {} at {:?}...", name, address));
+    upgrade_contract()?;
+    odra_cli::log(format!("✓ {} upgraded", name));
+    Ok(())
 }
 
 pub struct CreateDappPair;

@@ -1,6 +1,10 @@
 {
   "casper_contract_schema_version": 1,
   "toolchain": "rustc 1.94.0-nightly (8d670b93d 2025-12-31)",
+  "toolkit": {
+    "name": "Odra",
+    "version": "2.10.0"
+  },
   "authors": [],
   "repository": null,
   "homepage": null,
@@ -219,6 +223,11 @@
       "discriminant": 22003
     },
     {
+      "name": "DappRegistryNotSet",
+      "description": "The dapp registry has not been set.",
+      "discriminant": 22005
+    },
+    {
       "name": "Misconfigured",
       "description": "",
       "discriminant": 2
@@ -254,6 +263,7 @@
       "name": "set_dapp_registry",
       "description": "Points the factory to another dapp registry.",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "registry",
@@ -270,6 +280,7 @@
       "name": "register_admin",
       "description": "Grants admin role to an address.",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "admin",
@@ -286,6 +297,7 @@
       "name": "unregister_admin",
       "description": "Revokes admin role from an address.",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "admin",
@@ -302,6 +314,7 @@
       "name": "is_admin",
       "description": "Checks if an address has admin role.",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [
         {
           "name": "address",
@@ -318,6 +331,7 @@
       "name": "fee_to",
       "description": "Returns the `fee_to`",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": {
         "Option": "Key"
@@ -329,6 +343,7 @@
       "name": "set_fee_to",
       "description": "Sets `fee_to`",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "fee_to",
@@ -347,6 +362,7 @@
       "name": "create_pair",
       "description": "Creates a pair for the given tokens. If it exists, it will return existing one.",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "token_a",
@@ -369,6 +385,7 @@
       "name": "get_pair",
       "description": "Returns the pair address for the given tokens, if it exists.",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [
         {
           "name": "token_a",
@@ -393,6 +410,7 @@
       "name": "get_pair_name",
       "description": "Returns the pair name under which it was deployed by factory.",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [
         {
           "name": "token_a",
@@ -413,8 +431,9 @@
     },
     {
       "name": "get_dapp_registry",
-      "description": "Delegated. See `self.dapp.get_dapp_registry()` for details.",
+      "description": "Returns the dapp registry the contract belongs to. Reverts with [`Error::DappRegistryNotSet`] if the registry has not been set.",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": "Key",
       "is_contract_context": true,
@@ -453,7 +472,7 @@
   ],
   "call": {
     "wasm_file_name": "Factory.wasm",
-    "description": "Initializes the factory with the given fee to address.",
+    "description": "Initializes the factory with the given fee to address. If fee to is None, the factory will not charge any fees.",
     "arguments": [
       {
         "name": "odra_cfg_package_hash_key_name",
@@ -498,6 +517,94 @@
         "description": null,
         "ty": "Key",
         "optional": false
+      }
+    ]
+  },
+  "storage": {
+    "kind": "module",
+    "fields": [
+      {
+        "name": "fee_to",
+        "index": 1,
+        "kind": "value",
+        "ty": {
+          "Option": "Key"
+        }
+      },
+      {
+        "name": "pairs",
+        "index": 2,
+        "kind": "mapping",
+        "key": {
+          "Tuple2": [
+            "Key",
+            "Key"
+          ]
+        },
+        "value": {
+          "kind": "value",
+          "ty": "Key"
+        }
+      },
+      {
+        "name": "pair_factory",
+        "index": 3,
+        "kind": "value",
+        "ty": "Key"
+      },
+      {
+        "name": "access_control",
+        "index": 4,
+        "kind": "module",
+        "fields": [
+          {
+            "name": "roles",
+            "index": 1,
+            "kind": "mapping",
+            "key": {
+              "Tuple2": [
+                {
+                  "ByteArray": 32
+                },
+                "Key"
+              ]
+            },
+            "value": {
+              "kind": "value",
+              "ty": "Bool"
+            }
+          },
+          {
+            "name": "role_admin",
+            "index": 2,
+            "kind": "mapping",
+            "key": {
+              "ByteArray": 32
+            },
+            "value": {
+              "kind": "value",
+              "ty": {
+                "ByteArray": 32
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "dapp",
+        "index": 5,
+        "kind": "module",
+        "fields": [
+          {
+            "name": "registry",
+            "index": 1,
+            "kind": "dictionary",
+            "dictionary": "__dapp",
+            "key": "String",
+            "key_encoding": "utf8",
+            "value": "Key"
+          }
+        ]
       }
     ]
   }

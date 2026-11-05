@@ -1,6 +1,10 @@
 {
   "casper_contract_schema_version": 1,
   "toolchain": "rustc 1.94.0-nightly (8d670b93d 2025-12-31)",
+  "toolkit": {
+    "name": "Odra",
+    "version": "2.10.0"
+  },
   "authors": [],
   "repository": null,
   "homepage": null,
@@ -126,6 +130,11 @@
       "discriminant": 22003
     },
     {
+      "name": "DappRegistryNotSet",
+      "description": "The dapp registry has not been set.",
+      "discriminant": 22005
+    },
+    {
       "name": "ExcessiveInputAmount",
       "description": "",
       "discriminant": 21005
@@ -181,6 +190,7 @@
       "name": "factory_address",
       "description": "Returns the factory address",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": "Key",
       "is_contract_context": true,
@@ -190,6 +200,7 @@
       "name": "wcspr",
       "description": "Returns the WCSPR address",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": "Key",
       "is_contract_context": true,
@@ -197,8 +208,9 @@
     },
     {
       "name": "deposit",
-      "description": "Accepts CSPR deposits from WCSPR contract (equivalent to Solidity's receive() function)",
+      "description": "Accepts CSPR deposits from WCSPR contract (equivalent to Solidity's receive() function) Only accepts CSPR from WCSPR contract NOTE: This function is currently unused with the withdraw_to() implementation, but kept for compatibility and potential future use cases.",
       "is_mutable": false,
+      "is_payable": true,
       "arguments": [
         {
           "name": "__cargo_purse",
@@ -215,6 +227,7 @@
       "name": "add_liquidity",
       "description": "Add liquidity to a token pair",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "token_a",
@@ -279,6 +292,7 @@
       "name": "add_liquidity_cspr",
       "description": "Add liquidity to a token-CSPR pair",
       "is_mutable": true,
+      "is_payable": true,
       "arguments": [
         {
           "name": "token",
@@ -337,6 +351,7 @@
       "name": "remove_liquidity",
       "description": "Remove liquidity from a token pair",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "token_a",
@@ -394,6 +409,7 @@
       "name": "remove_liquidity_cspr",
       "description": "Remove liquidity from a token-CSPR pair",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "token",
@@ -445,6 +461,7 @@
       "name": "swap_exact_tokens_for_tokens",
       "description": "Swap exact tokens for tokens",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "amount_in",
@@ -489,6 +506,7 @@
       "name": "swap_tokens_for_exact_tokens",
       "description": "Swap tokens for exact tokens",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "amount_out",
@@ -533,6 +551,7 @@
       "name": "swap_exact_cspr_for_tokens",
       "description": "Swap exact CSPR for tokens",
       "is_mutable": true,
+      "is_payable": true,
       "arguments": [
         {
           "name": "amount_out_min",
@@ -577,6 +596,7 @@
       "name": "swap_tokens_for_exact_cspr",
       "description": "Swap tokens for exact CSPR",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "amount_out",
@@ -621,6 +641,7 @@
       "name": "swap_exact_tokens_for_cspr",
       "description": "Swap exact tokens for CSPR",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "amount_in",
@@ -665,6 +686,7 @@
       "name": "swap_cspr_for_exact_tokens",
       "description": "Swap CSPR for exact tokens",
       "is_mutable": true,
+      "is_payable": true,
       "arguments": [
         {
           "name": "amount_out",
@@ -709,6 +731,7 @@
       "name": "quote",
       "description": "Given some amount of an asset and pair reserves, returns an equivalent amount of the other asset",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [
         {
           "name": "amount_a",
@@ -737,6 +760,7 @@
       "name": "get_amount_out",
       "description": "Given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [
         {
           "name": "amount_in",
@@ -765,6 +789,7 @@
       "name": "get_amount_in",
       "description": "Given an output amount of an asset and pair reserves, returns a required input amount of the other asset",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [
         {
           "name": "amount_out",
@@ -793,6 +818,7 @@
       "name": "get_amounts_out",
       "description": "Performs chained getAmountOut calculations on any number of pairs",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [
         {
           "name": "amount_in",
@@ -819,6 +845,7 @@
       "name": "get_amounts_in",
       "description": "Performs chained getAmountIn calculations on any number of pairs",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [
         {
           "name": "amount_out",
@@ -843,8 +870,9 @@
     },
     {
       "name": "get_dapp_registry",
-      "description": "Delegated. See `self.dapp.get_dapp_registry()` for details.",
+      "description": "Returns the dapp registry the contract belongs to. Reverts with [`Error::DappRegistryNotSet`] if the registry has not been set.",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": "Key",
       "is_contract_context": true,
@@ -910,6 +938,39 @@
         "description": null,
         "ty": "Key",
         "optional": false
+      }
+    ]
+  },
+  "storage": {
+    "kind": "module",
+    "fields": [
+      {
+        "name": "factory",
+        "index": 1,
+        "kind": "value",
+        "ty": "Key"
+      },
+      {
+        "name": "wcspr",
+        "index": 2,
+        "kind": "value",
+        "ty": "Key"
+      },
+      {
+        "name": "dapp",
+        "index": 3,
+        "kind": "module",
+        "fields": [
+          {
+            "name": "registry",
+            "index": 1,
+            "kind": "dictionary",
+            "dictionary": "__dapp",
+            "key": "String",
+            "key_encoding": "utf8",
+            "value": "Key"
+          }
+        ]
       }
     ]
   }

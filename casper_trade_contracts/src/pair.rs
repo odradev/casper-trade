@@ -126,10 +126,13 @@ impl Pair {
             self.env().set_named_value(TOKEN1_KEY, token1);
         }
 
-        if current_revision < 3 {
-            // Pairs created before the dapp registry join the registry their factory points to.
-            let dapp_registry = self.factory_contract().get_dapp_registry();
-            self.dapp.set_dapp_registry(&dapp_registry);
+        // The pair belongs to the registry its factory points to. A pair created before the dapp
+        // registry (revision < 3, no registry set yet) joins it; a pair already in a registry follows
+        // its factory to another one, which is how a forced migration moves the whole dapp.
+        let factory_registry = self.factory_contract().get_dapp_registry();
+        let registry_set = current_revision >= 3;
+        if !registry_set || self.dapp.get_dapp_registry() != factory_registry {
+            self.dapp.set_dapp_registry(&factory_registry);
         }
 
         self.revision.set(NEWEST_REVISION);
@@ -571,6 +574,7 @@ impl Pair {
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::sort_tokens;
     use crate::{
         factory::{Factory, FactoryInitArgs},
         sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs},
@@ -633,11 +637,7 @@ mod tests {
             },
         );
         // The tests expect the tokens in the order the factory sorts them.
-        let (token0, token1) = if token0.address() < token1.address() {
-            (token0, token1)
-        } else {
-            (token1, token0)
-        };
+        let (token0, token1) = sort_tokens(token0, token1);
         let pair_address = factory.create_pair(token0.address(), token1.address());
         let pair = PairHostRef::new(pair_address, env.clone());
 

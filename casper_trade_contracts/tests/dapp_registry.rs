@@ -1,10 +1,12 @@
 mod common;
+use casper_trade_contracts::factory::{Factory, FactoryUpgradeArgs};
+use casper_trade_contracts::router::{Router, RouterUpgradeArgs};
 use common::setup;
 use odra::host::{Deployer, HostRef, NoArgs};
 use odra::prelude::*;
 use odra_modules::access::errors::Error as AccessError;
 use odra_modules::dapp::errors::Error;
-use odra_modules::dapp::events::DappContractAdded;
+use odra_modules::dapp::events::{DappContractAdded, DappRegistryChanged};
 use odra_modules::dapp::{DappContractHostRef, OwnedDappRegistry, OwnedDappRegistryHostRef};
 
 // The Factory is a registrar of the dapp: it passes the registry to every pair it creates and adds the
@@ -81,4 +83,92 @@ fn the_factory_must_be_a_registrar() {
             .try_create_pair(context.token0.address(), context.wcspr.address()),
         Err(Error::CallerNotDappRegistrar.into())
     );
+}
+
+// `upgrade(None)` keeps the registry of the Factory and the Router; `upgrade(Some(..))` moves them.
+#[test]
+fn factory_and_router_upgrades_keep_or_move_the_registry() {
+    let context = setup();
+    let env = &context.env;
+    let registry = context.dapp_registry.address();
+    let other = OwnedDappRegistry::deploy(env, NoArgs);
+
+    let factory = context.factory.address();
+    let router = context.router.address();
+    Factory::try_upgrade(
+        env,
+        factory,
+        FactoryUpgradeArgs {
+            dapp_registry: None,
+        },
+    )
+    .unwrap();
+    Router::try_upgrade(
+        env,
+        router,
+        RouterUpgradeArgs {
+            dapp_registry: None,
+        },
+    )
+    .unwrap();
+    assert_eq!(context.factory.get_dapp_registry(), registry);
+    assert_eq!(context.router.get_dapp_registry(), registry);
+
+    let moved = FactoryUpgradeArgs {
+        dapp_registry: Some(other.address()),
+    };
+    Factory::try_upgrade(env, factory, moved).unwrap();
+    let moved = RouterUpgradeArgs {
+        dapp_registry: Some(other.address()),
+    };
+    Router::try_upgrade(env, router, moved).unwrap();
+    assert_eq!(context.factory.get_dapp_registry(), other.address());
+    assert_eq!(context.router.get_dapp_registry(), other.address());
+}
+
+// On upgrade a pair takes the registry its Factory points to, whatever revision it is at: a pair from
+// before the dapp registry joins it, and a forced migration moves pairs already in a registry along
+// with the Factory.
+#[test]
+fn upgraded_pairs_follow_the_factory_registry() {
+    let mut context = setup();
+    let env = context.env.clone();
+    let previous = context.dapp_registry.address();
+    let mut other = OwnedDappRegistry::deploy(&env, NoArgs);
+
+    let moved = FactoryUpgradeArgs {
+        dapp_registry: Some(other.address()),
+    };
+    Factory::try_upgrade(&env, context.factory.address(), moved).unwrap();
+    context
+        .pair_factory
+        .upgrade_child_contract(context.pair.symbol());
+
+    assert_eq!(context.pair.get_dapp_registry(), other.address());
+    assert!(env.emitted_event(
+        &context.pair,
+        DappRegistryChanged {
+            previous_registry: Some(previous),
+            new_registry: other.address(),
+        }
+    ));
+    // The pair points back to the new registry, so it can join it there.
+    other.add_dapp_contract(&context.factory.address(), true);
+    other.add_dapp_contract(&context.pair.address(), false);
+    assert!(other.is_dapp_contract(&context.pair.address()));
+}
+
+// An upgrade of a pair whose Factory stayed with its registry changes nothing and emits nothing.
+#[test]
+fn upgrading_a_pair_in_place_keeps_its_registry() {
+    let mut context = setup();
+    let registry = context.dapp_registry.address();
+    let events_before = context.env.events_count(&context.pair);
+
+    context
+        .pair_factory
+        .upgrade_child_contract(context.pair.symbol());
+
+    assert_eq!(context.pair.get_dapp_registry(), registry);
+    assert_eq!(context.env.events_count(&context.pair), events_before);
 }

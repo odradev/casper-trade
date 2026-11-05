@@ -1,7 +1,10 @@
 use alloc::string::{String, ToString};
 use core::str::FromStr;
 
-use odra::{casper_types::U256, prelude::Address};
+use odra::{
+    casper_types::U256,
+    prelude::{Address, Addressable},
+};
 
 pub fn expand_to_18_decimals(amount: u64) -> U256 {
     let amount = U256::from(amount);
@@ -11,6 +14,15 @@ pub fn expand_to_18_decimals(amount: u64) -> U256 {
 pub fn expand_to_9_decimals(amount: u64) -> U256 {
     let amount = U256::from(amount);
     amount.saturating_mul(U256::from(10).pow(U256::from(9)))
+}
+
+/// Orders two tokens the way the factory does: by address, so a pair's token0 is the lower address.
+pub fn sort_tokens<T: Addressable>(token_a: T, token_b: T) -> (T, T) {
+    if token_a.address() < token_b.address() {
+        (token_a, token_b)
+    } else {
+        (token_b, token_a)
+    }
 }
 
 pub fn zero_address() -> Address {

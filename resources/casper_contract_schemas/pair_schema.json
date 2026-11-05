@@ -1,6 +1,10 @@
 {
   "casper_contract_schema_version": 1,
   "toolchain": "rustc 1.94.0-nightly (8d670b93d 2025-12-31)",
+  "toolkit": {
+    "name": "Odra",
+    "version": "2.10.0"
+  },
   "authors": [],
   "repository": null,
   "homepage": null,
@@ -21,6 +25,26 @@
             "name": "amount",
             "description": null,
             "ty": "U256"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "DappRegistryChanged",
+        "description": null,
+        "members": [
+          {
+            "name": "previous_registry",
+            "description": null,
+            "ty": {
+              "Option": "Key"
+            }
+          },
+          {
+            "name": "new_registry",
+            "description": null,
+            "ty": "Key"
           }
         ]
       }
@@ -342,9 +366,39 @@
   ],
   "errors": [
     {
+      "name": "CallerNotDappRegistrar",
+      "description": "The caller is not a registrar of the dapp.",
+      "discriminant": 22004
+    },
+    {
+      "name": "CannotRemoveDappRegistry",
+      "description": "The dapp registry cannot remove itself.",
+      "discriminant": 22006
+    },
+    {
       "name": "CannotTargetSelfUser",
       "description": "The user cannot target themselves.",
       "discriminant": 60003
+    },
+    {
+      "name": "DappContractAlreadyRegistered",
+      "description": "The contract is already registered. The registry itself counts as registered.",
+      "discriminant": 22001
+    },
+    {
+      "name": "DappContractNotRegistered",
+      "description": "The contract is not registered.",
+      "discriminant": 22002
+    },
+    {
+      "name": "DappRegistryMismatch",
+      "description": "The contract points to a different dapp registry.",
+      "discriminant": 22003
+    },
+    {
+      "name": "DappRegistryNotSet",
+      "description": "The dapp registry has not been set.",
+      "discriminant": 22005
     },
     {
       "name": "Forbidden",
@@ -402,6 +456,11 @@
       "discriminant": 20001
     },
     {
+      "name": "NotAContract",
+      "description": "The address is not a contract address.",
+      "discriminant": 22000
+    },
+    {
       "name": "NotInitialized",
       "description": "The pair is not properly initialized.",
       "discriminant": 20003
@@ -417,6 +476,7 @@
       "name": "initialize",
       "description": "",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "token0",
@@ -439,6 +499,7 @@
       "name": "mint",
       "description": "",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "to",
@@ -455,6 +516,7 @@
       "name": "burn",
       "description": "",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "to",
@@ -476,6 +538,7 @@
       "name": "swap",
       "description": "",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "amount0_out",
@@ -514,6 +577,7 @@
       "name": "get_reserves",
       "description": "Returns reserves and last block timestamp as a tuple",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": {
         "Tuple3": [
@@ -529,6 +593,7 @@
       "name": "get_reserve0",
       "description": "",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": "U256",
       "is_contract_context": true,
@@ -538,6 +603,7 @@
       "name": "get_reserve1",
       "description": "",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": "U256",
       "is_contract_context": true,
@@ -547,6 +613,7 @@
       "name": "get_block_timestamp_last",
       "description": "",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": "U64",
       "is_contract_context": true,
@@ -556,6 +623,7 @@
       "name": "get_price0_cumulative_last",
       "description": "",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": "U256",
       "is_contract_context": true,
@@ -565,6 +633,7 @@
       "name": "get_price1_cumulative_last",
       "description": "",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": "U256",
       "is_contract_context": true,
@@ -574,6 +643,7 @@
       "name": "skim",
       "description": "Force balances to match reserves by sending excess tokens to recipient",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "to",
@@ -590,6 +660,7 @@
       "name": "sync",
       "description": "Force reserves to match balances",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [],
       "return_ty": "Unit",
       "is_contract_context": true,
@@ -599,6 +670,7 @@
       "name": "token0",
       "description": "",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": "Key",
       "is_contract_context": true,
@@ -608,6 +680,7 @@
       "name": "token1",
       "description": "",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": "Key",
       "is_contract_context": true,
@@ -617,6 +690,7 @@
       "name": "get_tokens_decimals",
       "description": "",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": {
         "Tuple2": [
@@ -629,8 +703,9 @@
     },
     {
       "name": "total_supply",
-      "description": "Delegated. See `self.token.total_supply()` for details.",
+      "description": "Returns the total supply of the token.",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": "U256",
       "is_contract_context": true,
@@ -638,8 +713,9 @@
     },
     {
       "name": "balance_of",
-      "description": "Delegated. See `self.token.balance_of()` for details.",
+      "description": "Returns the balance of the given address.",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [
         {
           "name": "address",
@@ -654,8 +730,9 @@
     },
     {
       "name": "transfer",
-      "description": "Delegated. See `self.token.transfer()` for details.",
+      "description": "Transfers tokens from the caller to the recipient.",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "recipient",
@@ -676,8 +753,9 @@
     },
     {
       "name": "transfer_from",
-      "description": "Delegated. See `self.token.transfer_from()` for details.",
+      "description": "Transfers tokens from the owner to the recipient using the spender's allowance.",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "owner",
@@ -704,8 +782,9 @@
     },
     {
       "name": "approve",
-      "description": "Delegated. See `self.token.approve()` for details.",
+      "description": "Approves the spender to spend the given amount of tokens on behalf of the caller.",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "spender",
@@ -726,8 +805,9 @@
     },
     {
       "name": "allowance",
-      "description": "Delegated. See `self.token.allowance()` for details.",
+      "description": "Returns the amount of tokens the owner has allowed the spender to spend.",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [
         {
           "name": "owner",
@@ -748,8 +828,9 @@
     },
     {
       "name": "name",
-      "description": "Delegated. See `self.token.name()` for details.",
+      "description": "Returns the name of the token.",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": "String",
       "is_contract_context": true,
@@ -757,10 +838,21 @@
     },
     {
       "name": "symbol",
-      "description": "Delegated. See `self.token.symbol()` for details.",
+      "description": "Returns the symbol of the token.",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": "String",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "get_dapp_registry",
+      "description": "Returns the dapp registry the contract belongs to. Reverts with [`Error::DappRegistryNotSet`] if the registry has not been set.",
+      "is_mutable": false,
+      "is_payable": false,
+      "arguments": [],
+      "return_ty": "Key",
       "is_contract_context": true,
       "access": "public"
     }
@@ -769,6 +861,10 @@
     {
       "name": "Burn",
       "ty": "Burn"
+    },
+    {
+      "name": "DappRegistryChanged",
+      "ty": "DappRegistryChanged"
     },
     {
       "name": "DecreaseAllowance",
@@ -825,7 +921,7 @@
   ],
   "call": {
     "wasm_file_name": "Pair.wasm",
-    "description": "",
+    "description": "Initializes the pair; the factory passes the dapp registry it belongs to.",
     "arguments": [
       {
         "name": "odra_cfg_package_hash_key_name",
@@ -868,6 +964,163 @@
         "description": null,
         "ty": "Key",
         "optional": false
+      },
+      {
+        "name": "dapp_registry",
+        "description": null,
+        "ty": "Key",
+        "optional": false
+      }
+    ]
+  },
+  "storage": {
+    "kind": "module",
+    "fields": [
+      {
+        "name": "token",
+        "index": 1,
+        "kind": "module",
+        "fields": [
+          {
+            "name": "decimals",
+            "index": 1,
+            "kind": "named_key",
+            "named_key": "decimals",
+            "ty": "U8"
+          },
+          {
+            "name": "symbol",
+            "index": 2,
+            "kind": "named_key",
+            "named_key": "symbol",
+            "ty": "String"
+          },
+          {
+            "name": "name",
+            "index": 3,
+            "kind": "named_key",
+            "named_key": "name",
+            "ty": "String"
+          },
+          {
+            "name": "total_supply",
+            "index": 4,
+            "kind": "named_key",
+            "named_key": "total_supply",
+            "ty": "U256"
+          },
+          {
+            "name": "balances",
+            "index": 5,
+            "kind": "dictionary",
+            "dictionary": "balances",
+            "key": "Key",
+            "key_encoding": "base64",
+            "value": "U256"
+          },
+          {
+            "name": "allowances",
+            "index": 6,
+            "kind": "dictionary",
+            "dictionary": "allowances",
+            "key": {
+              "Tuple2": [
+                "Key",
+                "Key"
+              ]
+            },
+            "key_encoding": "hex_hash",
+            "value": "U256"
+          }
+        ]
+      },
+      {
+        "name": "factory",
+        "index": 2,
+        "kind": "value",
+        "ty": "Key"
+      },
+      {
+        "name": "token0",
+        "index": 3,
+        "kind": "value",
+        "ty": "Key"
+      },
+      {
+        "name": "token0_decimals",
+        "index": 4,
+        "kind": "value",
+        "ty": "U8"
+      },
+      {
+        "name": "token1",
+        "index": 5,
+        "kind": "value",
+        "ty": "Key"
+      },
+      {
+        "name": "token1_decimals",
+        "index": 6,
+        "kind": "value",
+        "ty": "U8"
+      },
+      {
+        "name": "reserve0",
+        "index": 7,
+        "kind": "value",
+        "ty": "U256"
+      },
+      {
+        "name": "reserve1",
+        "index": 8,
+        "kind": "value",
+        "ty": "U256"
+      },
+      {
+        "name": "k_last",
+        "index": 9,
+        "kind": "value",
+        "ty": "U256"
+      },
+      {
+        "name": "block_timestamp_last",
+        "index": 10,
+        "kind": "value",
+        "ty": "U64"
+      },
+      {
+        "name": "price0_cumulative_last",
+        "index": 11,
+        "kind": "value",
+        "ty": "U256"
+      },
+      {
+        "name": "price1_cumulative_last",
+        "index": 12,
+        "kind": "value",
+        "ty": "U256"
+      },
+      {
+        "name": "revision",
+        "index": 13,
+        "kind": "value",
+        "ty": "U8"
+      },
+      {
+        "name": "dapp",
+        "index": 14,
+        "kind": "module",
+        "fields": [
+          {
+            "name": "registry",
+            "index": 1,
+            "kind": "dictionary",
+            "dictionary": "__dapp",
+            "key": "String",
+            "key_encoding": "utf8",
+            "value": "Key"
+          }
+        ]
       }
     ]
   }
