@@ -8,12 +8,36 @@ use odra::host::{Deployer, HostEnv, HostRef, InstallConfig, NoArgs};
 use odra::prelude::{Address, Addressable, BTreeMap, OdraResult};
 use odra::schema::casper_contract_schema::NamedCLType;
 use odra_cli::{
-    cspr,
     scenario::{Args, Error, Scenario, ScenarioMetadata},
     CommandArg, ContractProvider, DeployedContractsContainer,
 };
 use odra_modules::dapp::storage::{DAPP_KEY, REGISTRY_KEY};
 use odra_modules::dapp::{DappMetadata, OwnedDappRegistry, OwnedDappRegistryHostRef};
+
+/// Gas limits in motes: the use measured on nctl (protocol 2.0, with the 1_117_587 motes per stored
+/// byte of casper-test) plus about 20%. On a `payment_limited` chain a quarter of the unused limit is
+/// burned, while a limit below the use fails and costs the whole limit.
+mod gas {
+    const fn cspr(amount: u64) -> u64 {
+        amount * 1_000_000_000
+    }
+    /// Installing or upgrading the registry: 273 CSPR used.
+    pub const REGISTRY: u64 = cspr(330);
+    /// Upgrading the Factory: 337 used.
+    pub const FACTORY: u64 = cspr(405);
+    /// Upgrading the Router: 408 used.
+    pub const ROUTER: u64 = cspr(490);
+    /// Upgrading the PairFactory: 676 used; a casper-test block takes at most 812.
+    pub const PAIR_FACTORY: u64 = cspr(800);
+    /// Upgrading a pair through the PairFactory: 450 used.
+    pub const PAIR: u64 = cspr(540);
+    /// A call of the registry (metadata, membership): under 1 CSPR used.
+    pub const REGISTRY_CALL: u64 = cspr(3);
+    /// Installing a sample token: 294 used.
+    pub const TOKEN: u64 = cspr(360);
+    /// Creating a pair through the Factory: 405 used.
+    pub const CREATE_PAIR: u64 = cspr(490);
+}
 
 // Factory, Router and the pairs point to the dapp registry (DappContractBase). The Factory is a registrar:
 // it passes the registry to every pair it creates and adds the pair to the dapp. The PairFactory is a
@@ -28,14 +52,14 @@ pub fn load_or_deploy_registry(
         return Ok(registry);
     }
     odra_cli::log("Deploying OwnedDappRegistry...");
-    env.set_gas(cspr!(400));
+    env.set_gas(gas::REGISTRY);
     let mut registry = OwnedDappRegistry::deploy_with_cfg(
         env,
         NoArgs,
         InstallConfig::upgradable::<OwnedDappRegistry>(),
     );
     container.add_contract(&registry)?;
-    env.set_gas(cspr!(10));
+    env.set_gas(gas::REGISTRY_CALL);
     registry.set_dapp_metadata(DappMetadata {
         name: "CSPR.trade".to_string(),
         description: "Automated Market Maker on Casper Network".to_string(),
@@ -63,11 +87,11 @@ pub fn register(
             odra_cli::log(format!("  {} already registered", name));
             return;
         }
-        env.set_gas(cspr!(10));
+        env.set_gas(gas::REGISTRY_CALL);
         registry.remove_dapp_contract(&address);
         odra_cli::log(format!("✓ {} removed to change its registrar role", name));
     }
-    env.set_gas(cspr!(10));
+    env.set_gas(gas::REGISTRY_CALL);
     registry.add_dapp_contract(&address, is_registrar);
     odra_cli::log(format!(
         "✓ {} registered (registrar: {})",
@@ -175,7 +199,7 @@ impl Scenario for MigrateToDappRegistry {
         let registry_address = registry.address();
         if force && registry_existed {
             upgrade("OwnedDappRegistry", registry_address, || {
-                env.set_gas(cspr!(500));
+                env.set_gas(gas::REGISTRY);
                 OwnedDappRegistry::try_upgrade(env, registry_address, NoArgs)
             })?;
         }
@@ -189,12 +213,12 @@ impl Scenario for MigrateToDappRegistry {
         let factory = container.contract_ref::<Factory>(env)?.address();
         let factory_was_up_to_date = up_to_date(&factory);
         upgrade_unless(factory_was_up_to_date, "Factory", factory, || {
-            env.set_gas(cspr!(500));
+            env.set_gas(gas::FACTORY);
             Factory::try_upgrade(env, factory, FactoryUpgradeArgs { dapp_registry })
         })?;
         let router = container.contract_ref::<Router>(env)?.address();
         upgrade_unless(up_to_date(&router), "Router", router, || {
-            env.set_gas(cspr!(500));
+            env.set_gas(gas::ROUTER);
             Router::try_upgrade(env, router, RouterUpgradeArgs { dapp_registry })
         })?;
         // The Factory registers the pairs it creates.
@@ -204,7 +228,7 @@ impl Scenario for MigrateToDappRegistry {
         let mut pair_factory = container.contract_ref::<PairFactory>(env)?;
         // An earlier version of the dapp registry registered the PairFactory as a registrar.
         if registry.is_dapp_contract(&pair_factory.address()) {
-            env.set_gas(cspr!(10));
+            env.set_gas(gas::REGISTRY_CALL);
             registry.remove_dapp_contract(&pair_factory.address());
             odra_cli::log("✓ PairFactory removed from the dapp");
         }
@@ -220,7 +244,7 @@ impl Scenario for MigrateToDappRegistry {
             "PairFactory",
             pair_factory.address(),
             || {
-                env.set_gas(cspr!(800));
+                env.set_gas(gas::PAIR_FACTORY);
                 PairFactory::try_upgrade(env, pair_factory.address(), NoArgs)
             },
         )?;
@@ -234,7 +258,7 @@ impl Scenario for MigrateToDappRegistry {
                 pair.address(),
                 || {
                     // The PairFactory keys its children by the pair symbol.
-                    env.set_gas(cspr!(800));
+                    env.set_gas(gas::PAIR);
                     pair_factory.try_upgrade_child_contract(pair.symbol())
                 },
             )?;
@@ -319,7 +343,7 @@ impl Scenario for CreateDappPair {
             let container_name = format!("{}{}", container_name, suffix);
             let symbol = args.get_single::<String>(arg)?;
             odra_cli::log(format!("Deploying token {}...", symbol));
-            env.set_gas(cspr!(500));
+            env.set_gas(gas::TOKEN);
             let token = SampleToken::deploy_with_cfg(
                 env,
                 SampleTokenInitArgs {
@@ -339,7 +363,7 @@ impl Scenario for CreateDappPair {
             tokens.push((symbol, token));
         }
 
-        env.set_gas(cspr!(500));
+        env.set_gas(gas::CREATE_PAIR);
         let pair = factory.create_pair(tokens[0].1.address(), tokens[1].1.address());
         let pair = PairHostRef::new(pair, env.clone());
         container.add_contract_named(&pair, Some(format!("DappPair{}", suffix)))?;
