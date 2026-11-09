@@ -1,6 +1,6 @@
 use super::utils::{create_token_ref, parse_token_input};
 use casper_trade_contracts::pair::PairFactory;
-use casper_trade_contracts::utils::contract_symbol;
+use casper_trade_contracts::utils::{contract_symbol, sort_tokens};
 use odra::host::HostEnv;
 use odra::schema::casper_contract_schema::NamedCLType;
 use odra_cli::{
@@ -96,11 +96,7 @@ impl Scenario for UpgradePairs {
             ));
 
             // Sort tokens the same way the factory does
-            let (token0_address, token1_address) = if token_a_address < token_b_address {
-                (token_a_address, token_b_address)
-            } else {
-                (token_b_address, token_a_address)
-            };
+            let (token0_address, token1_address) = sort_tokens(token_a_address, token_b_address);
 
             let token_a = create_token_ref(token0_address, env);
             let token_b = create_token_ref(token1_address, env);

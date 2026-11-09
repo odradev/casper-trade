@@ -1,12 +1,36 @@
 {
   "casper_contract_schema_version": 1,
-  "toolchain": "rustc 1.85.0-nightly (d117b7f21 2024-12-31)",
+  "toolchain": "rustc 1.94.0-nightly (8d670b93d 2025-12-31)",
+  "toolkit": {
+    "name": "Odra",
+    "version": "2.10.0"
+  },
   "authors": [],
   "repository": null,
   "homepage": null,
   "contract_name": "Factory",
   "contract_version": "0.1.0",
   "types": [
+    {
+      "struct": {
+        "name": "DappRegistryChanged",
+        "description": null,
+        "members": [
+          {
+            "name": "previous_registry",
+            "description": null,
+            "ty": {
+              "Option": "Key"
+            }
+          },
+          {
+            "name": "new_registry",
+            "description": null,
+            "ty": "Key"
+          }
+        ]
+      }
+    },
     {
       "struct": {
         "name": "FactoryInitialized",
@@ -159,6 +183,11 @@
   ],
   "errors": [
     {
+      "name": "CallerNotDappRegistrar",
+      "description": "The caller is not a registrar of the dapp.",
+      "discriminant": 22004
+    },
+    {
       "name": "CallerNotTheNewOwner",
       "description": "The caller is not the new owner.",
       "discriminant": 20002
@@ -169,9 +198,34 @@
       "discriminant": 20001
     },
     {
+      "name": "CannotRemoveDappRegistry",
+      "description": "The dapp registry cannot remove itself.",
+      "discriminant": 22006
+    },
+    {
       "name": "CreatingAPairWithoutMockingIt",
       "description": "",
       "discriminant": 1
+    },
+    {
+      "name": "DappContractAlreadyRegistered",
+      "description": "The contract is already registered. The registry itself counts as registered.",
+      "discriminant": 22001
+    },
+    {
+      "name": "DappContractNotRegistered",
+      "description": "The contract is not registered.",
+      "discriminant": 22002
+    },
+    {
+      "name": "DappRegistryMismatch",
+      "description": "The contract points to a different dapp registry.",
+      "discriminant": 22003
+    },
+    {
+      "name": "DappRegistryNotSet",
+      "description": "The dapp registry has not been set.",
+      "discriminant": 22005
     },
     {
       "name": "Misconfigured",
@@ -182,6 +236,11 @@
       "name": "MissingRole",
       "description": "The role is missing.",
       "discriminant": 20003
+    },
+    {
+      "name": "NotAContract",
+      "description": "The address is not a contract address.",
+      "discriminant": 22000
     },
     {
       "name": "OwnerNotSet",
@@ -201,9 +260,27 @@
   ],
   "entry_points": [
     {
+      "name": "set_dapp_registry",
+      "description": "Points the factory to another dapp registry.",
+      "is_mutable": true,
+      "is_payable": false,
+      "arguments": [
+        {
+          "name": "registry",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
       "name": "register_admin",
       "description": "Grants admin role to an address.",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "admin",
@@ -220,6 +297,7 @@
       "name": "unregister_admin",
       "description": "Revokes admin role from an address.",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "admin",
@@ -236,6 +314,7 @@
       "name": "is_admin",
       "description": "Checks if an address has admin role.",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [
         {
           "name": "address",
@@ -252,6 +331,7 @@
       "name": "fee_to",
       "description": "Returns the `fee_to`",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [],
       "return_ty": {
         "Option": "Key"
@@ -263,6 +343,7 @@
       "name": "set_fee_to",
       "description": "Sets `fee_to`",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "fee_to",
@@ -281,6 +362,7 @@
       "name": "create_pair",
       "description": "Creates a pair for the given tokens. If it exists, it will return existing one.",
       "is_mutable": true,
+      "is_payable": false,
       "arguments": [
         {
           "name": "token_a",
@@ -303,6 +385,7 @@
       "name": "get_pair",
       "description": "Returns the pair address for the given tokens, if it exists.",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [
         {
           "name": "token_a",
@@ -327,6 +410,7 @@
       "name": "get_pair_name",
       "description": "Returns the pair name under which it was deployed by factory.",
       "is_mutable": false,
+      "is_payable": false,
       "arguments": [
         {
           "name": "token_a",
@@ -344,9 +428,23 @@
       "return_ty": "String",
       "is_contract_context": true,
       "access": "public"
+    },
+    {
+      "name": "get_dapp_registry",
+      "description": "Returns the dapp registry the contract belongs to. Reverts with [`Error::DappRegistryNotSet`] if the registry has not been set.",
+      "is_mutable": false,
+      "is_payable": false,
+      "arguments": [],
+      "return_ty": "Key",
+      "is_contract_context": true,
+      "access": "public"
     }
   ],
   "events": [
+    {
+      "name": "DappRegistryChanged",
+      "ty": "DappRegistryChanged"
+    },
     {
       "name": "FactoryInitialized",
       "ty": "FactoryInitialized"
@@ -374,7 +472,7 @@
   ],
   "call": {
     "wasm_file_name": "Factory.wasm",
-    "description": "Initializes the factory with the given fee to address.",
+    "description": "Initializes the factory with the given fee to address. If fee to is None, the factory will not charge any fees.",
     "arguments": [
       {
         "name": "odra_cfg_package_hash_key_name",
@@ -413,6 +511,100 @@
         "description": null,
         "ty": "Key",
         "optional": false
+      },
+      {
+        "name": "dapp_registry",
+        "description": null,
+        "ty": "Key",
+        "optional": false
+      }
+    ]
+  },
+  "storage": {
+    "kind": "module",
+    "fields": [
+      {
+        "name": "fee_to",
+        "index": 1,
+        "kind": "value",
+        "ty": {
+          "Option": "Key"
+        }
+      },
+      {
+        "name": "pairs",
+        "index": 2,
+        "kind": "mapping",
+        "key": {
+          "Tuple2": [
+            "Key",
+            "Key"
+          ]
+        },
+        "value": {
+          "kind": "value",
+          "ty": "Key"
+        }
+      },
+      {
+        "name": "pair_factory",
+        "index": 3,
+        "kind": "value",
+        "ty": "Key"
+      },
+      {
+        "name": "access_control",
+        "index": 4,
+        "kind": "module",
+        "fields": [
+          {
+            "name": "roles",
+            "index": 1,
+            "kind": "mapping",
+            "key": {
+              "Tuple2": [
+                {
+                  "ByteArray": 32
+                },
+                "Key"
+              ]
+            },
+            "value": {
+              "kind": "value",
+              "ty": "Bool"
+            }
+          },
+          {
+            "name": "role_admin",
+            "index": 2,
+            "kind": "mapping",
+            "key": {
+              "ByteArray": 32
+            },
+            "value": {
+              "kind": "value",
+              "ty": {
+                "ByteArray": 32
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "dapp",
+        "index": 5,
+        "kind": "module",
+        "fields": [
+          {
+            "name": "registry",
+            "index": 1,
+            "kind": "dictionary",
+            "dictionary": "__dapp",
+            "key": "String",
+            "key_encoding": "utf8",
+            "value": "Key"
+          }
+        ]
       }
     ]
   }

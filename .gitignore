@@ -3,4 +3,7 @@
 /target
 .env
 .idea
-resources/casper-net-1-contracts.toml
+# Contracts files of test runs; only the real deployments are tracked
+resources/*-contracts.toml
+!resources/casper-test-contracts.toml
+!resources/casper-contracts.toml

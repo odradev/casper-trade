@@ -12,3 +12,6 @@ fqn = "casper_trade_contracts::factory::Factory"
 
 [[contracts]]
 fqn = "casper_trade_contracts::router::Router"
+
+[[contracts]]
+fqn = "odra_modules::dapp::OwnedDappRegistry"
