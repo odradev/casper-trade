@@ -12,7 +12,6 @@ use odra::casper_types::U256;
 use odra::host::{Deployer, HostEnv, HostRef, InstallConfig, NoArgs};
 use odra::prelude::*;
 use odra_modules::cep18_token::Cep18HostRef;
-use odra_modules::dapp::{OwnedDappRegistry, OwnedDappRegistryHostRef};
 use odra_modules::wrapped_native::{WrappedNativeToken, WrappedNativeTokenHostRef};
 
 #[allow(dead_code)]
@@ -20,8 +19,8 @@ pub struct TestContext {
     pub env: HostEnv,
     pub factory: FactoryHostRef,
     pub pair_factory: PairFactoryHostRef,
+    /// The router is also the dapp registry.
     pub router: RouterHostRef,
-    pub dapp_registry: OwnedDappRegistryHostRef,
     pub token0: SampleTokenHostRef,
     pub token1: SampleTokenHostRef,
     pub wcspr: WrappedNativeTokenHostRef,
@@ -37,7 +36,6 @@ pub fn setup() -> TestContext {
     let owner = env.get_account(0);
     let alice = env.get_account(1);
     let pair_factory = PairFactory::deploy(&env, NoArgs);
-    let mut dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
 
     // Deploy the actual Factory contract; upgradable like on a live network, so the tests can upgrade it.
     let mut factory = Factory::deploy_with_cfg(
@@ -45,26 +43,26 @@ pub fn setup() -> TestContext {
         FactoryInitArgs {
             fee_to: None,
             pair_factory: pair_factory.address(),
-            dapp_registry: dapp_registry.address(),
         },
         InstallConfig::upgradable::<Factory>(),
     );
-    // The factory registers the pairs it creates.
-    dapp_registry.add_dapp_contract(&factory.address(), true);
 
     // Deploy WCSPR contract
     let wcspr = WrappedNativeToken::deploy(&env, NoArgs);
 
-    // Deploy Router with the factory and wcspr address; upgradable like the Factory.
-    let router = Router::deploy_with_cfg(
+    // Deploy Router with the factory and wcspr address; upgradable like the Factory. The router is the
+    // dapp registry.
+    let mut router = Router::deploy_with_cfg(
         &env,
         RouterInitArgs {
             factory: factory.address(),
             wcspr: wcspr.address(),
-            dapp_registry: dapp_registry.address(),
         },
         InstallConfig::upgradable::<Router>(),
     );
+    // The factory joins the dapp as a registrar: it registers the pairs it creates.
+    factory.set_dapp_registry(&router.address());
+    router.add_dapp_contract(&factory.address(), true);
 
     // Deploy tokens
     let token0 = SampleToken::deploy(
@@ -110,7 +108,6 @@ pub fn setup() -> TestContext {
         factory,
         pair_factory,
         router,
-        dapp_registry,
         token0,
         token1,
         wcspr,

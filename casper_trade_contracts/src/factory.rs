@@ -31,13 +31,16 @@ impl Factory {
     /// Initializes the factory with the given fee to address.
     ///
     /// If fee to is None, the factory will not charge any fees.
-    pub fn init(&mut self, fee_to: Option<Address>, pair_factory: Address, dapp_registry: Address) {
+    ///
+    /// The factory joins the dapp afterwards: an admin points it to the dapp registry (the Router)
+    /// with `set_dapp_registry`, and the registry's owner registers it as a registrar. It creates
+    /// pairs only from then on, since it registers every pair it creates.
+    pub fn init(&mut self, fee_to: Option<Address>, pair_factory: Address) {
         let caller = self.env().caller();
         self.fee_to.set(fee_to);
         self.pair_factory.set(pair_factory);
         self.access_control
             .unchecked_grant_role(&DEFAULT_ADMIN_ROLE, &caller);
-        self.dapp.set_dapp_registry(&dapp_registry);
 
         self.env().emit_event(FactoryInitialized {
             fee_to,
@@ -52,7 +55,7 @@ impl Factory {
         }
     }
 
-    /// Points the factory to another dapp registry.
+    /// Points the factory to a dapp registry. Only an admin may call it.
     pub fn set_dapp_registry(&mut self, registry: &Address) {
         self.assert_admin();
         self.dapp.set_dapp_registry(registry);
@@ -185,7 +188,6 @@ mod tests {
     use super::*;
     use crate::pair::PairFactory;
     use odra::host::{Deployer, NoArgs};
-    use odra_modules::dapp::OwnedDappRegistry;
 
     #[test]
     fn test_admin_add_and_remove() {
@@ -197,17 +199,13 @@ mod tests {
 
         let pair_factory = PairFactory::deploy(&env, NoArgs);
 
-        let mut dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
         let mut factory = Factory::deploy(
             &env,
             FactoryInitArgs {
                 fee_to: None,
                 pair_factory: pair_factory.address(),
-                dapp_registry: dapp_registry.address(),
             },
         );
-        // The factory registers the pairs it creates.
-        dapp_registry.add_dapp_contract(&factory.address(), true);
 
         // Assert: deployer is automatically an admin after init
         assert!(factory.is_admin(deployer));

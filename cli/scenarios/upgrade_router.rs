@@ -1,5 +1,5 @@
-use casper_trade_contracts::router::{Router, RouterUpgradeArgs};
-use odra::host::{Deployer, HostEnv};
+use casper_trade_contracts::router::Router;
+use odra::host::{Deployer, HostEnv, NoArgs};
 use odra::prelude::Addressable;
 use odra_cli::{
     cspr,
@@ -32,14 +32,9 @@ impl Scenario for UpgradeRouter {
         ));
 
         env.set_gas(cspr!(800));
-        // Keeps the dapp registry the router points to; MigrateToDappRegistry sets it.
-        let _ = Router::try_upgrade(
-            env,
-            router.address(),
-            RouterUpgradeArgs {
-                dapp_registry: None,
-            },
-        )?;
+        // A Router from before the dapp registry becomes it; MigrateToDappRegistry then moves the
+        // Factory and the pairs to it. A Router that is the registry already keeps its dapp state.
+        let _ = Router::try_upgrade(env, router.address(), NoArgs)?;
 
         odra_cli::log("Router upgraded successfully");
 

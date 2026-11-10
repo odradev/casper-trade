@@ -3,7 +3,7 @@
   "toolchain": "rustc 1.94.0-nightly (8d670b93d 2025-12-31)",
   "toolkit": {
     "name": "Odra",
-    "version": "2.10.0"
+    "version": "2.10.1"
   },
   "authors": [],
   "repository": null,
@@ -261,7 +261,7 @@
   "entry_points": [
     {
       "name": "set_dapp_registry",
-      "description": "Points the factory to another dapp registry.",
+      "description": "Points the factory to a dapp registry. Only an admin may call it.",
       "is_mutable": true,
       "is_payable": false,
       "arguments": [
@@ -472,7 +472,7 @@
   ],
   "call": {
     "wasm_file_name": "Factory.wasm",
-    "description": "Initializes the factory with the given fee to address. If fee to is None, the factory will not charge any fees.",
+    "description": "Initializes the factory with the given fee to address. If fee to is None, the factory will not charge any fees. The factory joins the dapp afterwards: an admin points it to the dapp registry (the Router) with `set_dapp_registry`, and the registry's owner registers it as a registrar. It creates pairs only from then on, since it registers every pair it creates.",
     "arguments": [
       {
         "name": "odra_cfg_package_hash_key_name",
@@ -508,12 +508,6 @@
       },
       {
         "name": "pair_factory",
-        "description": null,
-        "ty": "Key",
-        "optional": false
-      },
-      {
-        "name": "dapp_registry",
         "description": null,
         "ty": "Key",
         "optional": false

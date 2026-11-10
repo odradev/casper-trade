@@ -9,7 +9,7 @@ use odra::{
 };
 
 use odra_modules::cep18_token::Cep18ContractRef;
-use odra_modules::dapp::DappContractBase;
+use odra_modules::dapp::{DappContractBase, DappMetadata, OwnedDappRegistry};
 use odra_modules::wrapped_native::WrappedNativeTokenContractRef;
 
 use crate::pair::events::CSPRRefunded;
@@ -20,34 +20,73 @@ use crate::{
     router::events::RouterSwapRoute,
 };
 
+/// The revision of the router's storage; a router of an earlier revision is brought up to date by
+/// [`Router::upgrade`]. Revision 1: the router hosts the dapp registry.
+pub const NEWEST_REVISION: u8 = 1;
+
 /// Router - Router contract for Casper Trade V2
 /// Based on UniswapV2Router02
+///
+/// The router also hosts the dapp registry of CSPR.trade, an [`OwnedDappRegistry`]: the Factory and
+/// the pairs point to the router, and the router's owner (its deployer) sets the dapp metadata and
+/// registers the contracts. Like every contract of the dapp, the router points to the registry, that
+/// is to itself.
 #[odra::module(events = [CSPRRefunded, RouterSwapRoute], errors = RouterError)]
 pub struct Router {
     factory: Var<Address>,
     wcspr: Var<Address>,
+    /// The dapp registry of CSPR.trade.
+    registry: SubModule<OwnedDappRegistry>,
+    /// The registry the router belongs to: itself, kept in `__dapp->registry` like in every contract
+    /// of the dapp.
     dapp: SubModule<DappContractBase>,
+    revision: Var<u8>,
 }
 
 #[odra::module]
 impl Router {
-    /// Initializes the router with the factory address
-    pub fn init(&mut self, factory: Address, wcspr: Address, dapp_registry: Address) {
+    /// Initializes the router with the factory and WCSPR addresses, and makes it the dapp registry
+    /// owned by the caller.
+    pub fn init(&mut self, factory: Address, wcspr: Address) {
         self.factory.set(factory);
         self.wcspr.set(wcspr);
-        self.dapp.set_dapp_registry(&dapp_registry);
+        self.become_the_registry();
     }
 
-    /// Upgrades the router; `dapp_registry` points an already deployed router to the registry.
-    pub fn upgrade(&mut self, dapp_registry: Option<Address>) {
-        if let Some(dapp_registry) = dapp_registry {
-            self.dapp.set_dapp_registry(&dapp_registry);
+    /// Upgrades the router. A router from before revision 1, which pointed to a separate dapp
+    /// registry or to none, becomes the dapp registry, owned by the caller; a router that is the
+    /// registry already keeps its owner, metadata and contracts.
+    pub fn upgrade(&mut self) {
+        if self.revision.get_or_default() < 1 {
+            self.become_the_registry();
         }
     }
 
     delegate! {
-        to self.dapp {
+        to self.registry {
+            /// Sets the dapp metadata. Only the owner may call it.
+            fn set_dapp_metadata(&mut self, metadata: DappMetadata);
+            /// Returns the dapp metadata.
+            fn get_dapp_metadata(&self) -> DappMetadata;
+            /// Adds a contract to the dapp. The owner may add any contract; a registrar (the Factory)
+            /// may add contracts that are not registrars.
+            fn add_dapp_contract(&mut self, dapp_contract: &Address, is_registrar: bool);
+            /// Removes a contract from the dapp. Only the owner may call it.
+            fn remove_dapp_contract(&mut self, dapp_contract: &Address);
+            /// Returns the contracts of the dapp, the router first.
+            fn get_dapp_contracts(&self) -> Vec<Address>;
+            /// Returns true if the contract belongs to the dapp.
+            fn is_dapp_contract(&self, dapp_contract: &Address) -> bool;
+            /// Returns true if the contract is a registrar: it may add other contracts.
+            fn is_dapp_registrar(&self, dapp_contract: &Address) -> bool;
+            /// Returns the dapp registry the router belongs to: the router itself.
             fn get_dapp_registry(&self) -> Address;
+            /// Returns the owner of the dapp registry.
+            fn get_owner(&self) -> Address;
+            /// Transfers the ownership of the dapp registry. Only the owner may call it.
+            fn transfer_ownership(&mut self, new_owner: &Address);
+            /// Leaves the dapp registry without an owner. Only the owner may call it.
+            fn renounce_ownership(&mut self);
         }
     }
 
@@ -709,6 +748,14 @@ impl Router {
             .get_pair(token_a, token_b)
             .unwrap_or_revert_with(&self.env(), RouterError::PairNotFound)
     }
+
+    /// Makes the router the dapp registry, owned by the caller, and points the router to itself.
+    fn become_the_registry(&mut self) {
+        self.registry.init();
+        let self_address = self.env().self_address();
+        self.dapp.set_dapp_registry(&self_address);
+        self.revision.set(NEWEST_REVISION);
+    }
 }
 
 #[cfg(test)]
@@ -726,7 +773,6 @@ mod tests {
         host::{Deployer, HostEnv, HostRef, NoArgs},
         prelude::Address,
     };
-    use odra_modules::dapp::OwnedDappRegistry;
     use odra_modules::{
         cep18_token::Cep18HostRef,
         wrapped_native::{WrappedNativeToken, WrappedNativeTokenHostRef},
@@ -753,7 +799,6 @@ mod tests {
         let alice = env.get_account(1);
         let bob = env.get_account(2);
         let pair_factory = PairFactory::deploy(&env, NoArgs);
-        let mut dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
 
         // Deploy the actual Factory contract
         let mut factory = Factory::deploy(
@@ -761,24 +806,23 @@ mod tests {
             FactoryInitArgs {
                 fee_to: None,
                 pair_factory: pair_factory.address(),
-                dapp_registry: dapp_registry.address(),
             },
         );
-        // The factory registers the pairs it creates.
-        dapp_registry.add_dapp_contract(&factory.address(), true);
 
         // Deploy WCSPR contract
         let wcspr = WrappedNativeToken::deploy(&env, NoArgs);
 
-        // Deploy Router with the factory and wcspr address
-        let router = Router::deploy(
+        // Deploy Router with the factory and wcspr address; the router is the dapp registry.
+        let mut router = Router::deploy(
             &env,
             RouterInitArgs {
                 factory: factory.address(),
                 wcspr: wcspr.address(),
-                dapp_registry: dapp_registry.address(),
             },
         );
+        // The factory joins the dapp as a registrar: it registers the pairs it creates.
+        factory.set_dapp_registry(&router.address());
+        router.add_dapp_contract(&factory.address(), true);
 
         // Deploy tokens
         let token0 = SampleToken::deploy(

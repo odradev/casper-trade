@@ -3,7 +3,7 @@
   "toolchain": "rustc 1.94.0-nightly (8d670b93d 2025-12-31)",
   "toolkit": {
     "name": "Odra",
-    "version": "2.10.0"
+    "version": "2.10.1"
   },
   "authors": [],
   "repository": null,
@@ -31,6 +31,103 @@
     },
     {
       "struct": {
+        "name": "DappContractAdded",
+        "description": null,
+        "members": [
+          {
+            "name": "contract",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "is_registrar",
+            "description": null,
+            "ty": "Bool"
+          },
+          {
+            "name": "registrar",
+            "description": null,
+            "ty": "Key"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "DappContractRemoved",
+        "description": null,
+        "members": [
+          {
+            "name": "contract",
+            "description": null,
+            "ty": "Key"
+          },
+          {
+            "name": "registrar",
+            "description": null,
+            "ty": "Key"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "DappMetadata",
+        "description": null,
+        "members": [
+          {
+            "name": "name",
+            "description": null,
+            "ty": "String"
+          },
+          {
+            "name": "description",
+            "description": null,
+            "ty": "String"
+          },
+          {
+            "name": "website_url",
+            "description": null,
+            "ty": "String"
+          },
+          {
+            "name": "icon_url",
+            "description": null,
+            "ty": "String"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "DappMetadataChanged",
+        "description": null,
+        "members": [
+          {
+            "name": "name",
+            "description": null,
+            "ty": "String"
+          },
+          {
+            "name": "description",
+            "description": null,
+            "ty": "String"
+          },
+          {
+            "name": "website_url",
+            "description": null,
+            "ty": "String"
+          },
+          {
+            "name": "icon_url",
+            "description": null,
+            "ty": "String"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
         "name": "DappRegistryChanged",
         "description": null,
         "members": [
@@ -45,6 +142,28 @@
             "name": "new_registry",
             "description": null,
             "ty": "Key"
+          }
+        ]
+      }
+    },
+    {
+      "struct": {
+        "name": "OwnershipTransferred",
+        "description": null,
+        "members": [
+          {
+            "name": "previous_owner",
+            "description": null,
+            "ty": {
+              "Option": "Key"
+            }
+          },
+          {
+            "name": "new_owner",
+            "description": null,
+            "ty": {
+              "Option": "Key"
+            }
           }
         ]
       }
@@ -108,6 +227,16 @@
       "name": "CallerNotDappRegistrar",
       "description": "The caller is not a registrar of the dapp.",
       "discriminant": 22004
+    },
+    {
+      "name": "CallerNotTheNewOwner",
+      "description": "The caller is not the new owner.",
+      "discriminant": 20002
+    },
+    {
+      "name": "CallerNotTheOwner",
+      "description": "The caller is not the owner.",
+      "discriminant": 20001
     },
     {
       "name": "CannotRemoveDappRegistry",
@@ -175,14 +304,29 @@
       "discriminant": 21000
     },
     {
+      "name": "MissingRole",
+      "description": "The role is missing.",
+      "discriminant": 20003
+    },
+    {
       "name": "NotAContract",
       "description": "The address is not a contract address.",
       "discriminant": 22000
     },
     {
+      "name": "OwnerNotSet",
+      "description": "The owner is not set.",
+      "discriminant": 20000
+    },
+    {
       "name": "PairNotFound",
       "description": "",
       "discriminant": 21007
+    },
+    {
+      "name": "RoleRenounceForAnotherAddress",
+      "description": "The role cannot be renounced for another address.",
+      "discriminant": 20004
     }
   ],
   "entry_points": [
@@ -869,12 +1013,162 @@
       "access": "public"
     },
     {
+      "name": "set_dapp_metadata",
+      "description": "Sets the dapp metadata. Only the owner may call it.",
+      "is_mutable": true,
+      "is_payable": false,
+      "arguments": [
+        {
+          "name": "metadata",
+          "description": null,
+          "ty": "DappMetadata",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "get_dapp_metadata",
+      "description": "Returns the dapp metadata.",
+      "is_mutable": false,
+      "is_payable": false,
+      "arguments": [],
+      "return_ty": "DappMetadata",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "add_dapp_contract",
+      "description": "Adds a contract to the dapp. The owner may add any contract; a registrar (the Factory) may add contracts that are not registrars.",
+      "is_mutable": true,
+      "is_payable": false,
+      "arguments": [
+        {
+          "name": "dapp_contract",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        },
+        {
+          "name": "is_registrar",
+          "description": null,
+          "ty": "Bool",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "remove_dapp_contract",
+      "description": "Removes a contract from the dapp. Only the owner may call it.",
+      "is_mutable": true,
+      "is_payable": false,
+      "arguments": [
+        {
+          "name": "dapp_contract",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "get_dapp_contracts",
+      "description": "Returns the contracts of the dapp, the router first.",
+      "is_mutable": false,
+      "is_payable": false,
+      "arguments": [],
+      "return_ty": {
+        "List": "Key"
+      },
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "is_dapp_contract",
+      "description": "Returns true if the contract belongs to the dapp.",
+      "is_mutable": false,
+      "is_payable": false,
+      "arguments": [
+        {
+          "name": "dapp_contract",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "Bool",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "is_dapp_registrar",
+      "description": "Returns true if the contract is a registrar: it may add other contracts.",
+      "is_mutable": false,
+      "is_payable": false,
+      "arguments": [
+        {
+          "name": "dapp_contract",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "Bool",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
       "name": "get_dapp_registry",
-      "description": "Returns the dapp registry the contract belongs to. Reverts with [`Error::DappRegistryNotSet`] if the registry has not been set.",
+      "description": "Returns the dapp registry the router belongs to: the router itself.",
       "is_mutable": false,
       "is_payable": false,
       "arguments": [],
       "return_ty": "Key",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "get_owner",
+      "description": "Returns the owner of the dapp registry.",
+      "is_mutable": false,
+      "is_payable": false,
+      "arguments": [],
+      "return_ty": "Key",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "transfer_ownership",
+      "description": "Transfers the ownership of the dapp registry. Only the owner may call it.",
+      "is_mutable": true,
+      "is_payable": false,
+      "arguments": [
+        {
+          "name": "new_owner",
+          "description": null,
+          "ty": "Key",
+          "optional": false
+        }
+      ],
+      "return_ty": "Unit",
+      "is_contract_context": true,
+      "access": "public"
+    },
+    {
+      "name": "renounce_ownership",
+      "description": "Leaves the dapp registry without an owner. Only the owner may call it.",
+      "is_mutable": true,
+      "is_payable": false,
+      "arguments": [],
+      "return_ty": "Unit",
       "is_contract_context": true,
       "access": "public"
     }
@@ -885,8 +1179,24 @@
       "ty": "CSPRRefunded"
     },
     {
+      "name": "DappContractAdded",
+      "ty": "DappContractAdded"
+    },
+    {
+      "name": "DappContractRemoved",
+      "ty": "DappContractRemoved"
+    },
+    {
+      "name": "DappMetadataChanged",
+      "ty": "DappMetadataChanged"
+    },
+    {
       "name": "DappRegistryChanged",
       "ty": "DappRegistryChanged"
+    },
+    {
+      "name": "OwnershipTransferred",
+      "ty": "OwnershipTransferred"
     },
     {
       "name": "RouterSwapRoute",
@@ -895,7 +1205,7 @@
   ],
   "call": {
     "wasm_file_name": "Router.wasm",
-    "description": "Initializes the router with the factory address",
+    "description": "Initializes the router with the factory and WCSPR addresses, and makes it the dapp registry owned by the caller.",
     "arguments": [
       {
         "name": "odra_cfg_package_hash_key_name",
@@ -932,12 +1242,6 @@
         "description": null,
         "ty": "Key",
         "optional": false
-      },
-      {
-        "name": "dapp_registry",
-        "description": null,
-        "ty": "Key",
-        "optional": false
       }
     ]
   },
@@ -957,8 +1261,95 @@
         "ty": "Key"
       },
       {
-        "name": "dapp",
+        "name": "registry",
         "index": 3,
+        "kind": "module",
+        "fields": [
+          {
+            "name": "ownable",
+            "index": 1,
+            "kind": "module",
+            "fields": [
+              {
+                "name": "owner",
+                "index": 1,
+                "kind": "value",
+                "ty": {
+                  "Option": "Key"
+                }
+              }
+            ]
+          },
+          {
+            "name": "dapp",
+            "index": 2,
+            "kind": "module",
+            "fields": [
+              {
+                "name": "name",
+                "index": 1,
+                "kind": "dictionary",
+                "dictionary": "__dapp",
+                "key": "String",
+                "key_encoding": "utf8",
+                "value": "String"
+              },
+              {
+                "name": "description",
+                "index": 2,
+                "kind": "dictionary",
+                "dictionary": "__dapp",
+                "key": "String",
+                "key_encoding": "utf8",
+                "value": "String"
+              },
+              {
+                "name": "website_url",
+                "index": 3,
+                "kind": "dictionary",
+                "dictionary": "__dapp",
+                "key": "String",
+                "key_encoding": "utf8",
+                "value": "String"
+              },
+              {
+                "name": "icon_url",
+                "index": 4,
+                "kind": "dictionary",
+                "dictionary": "__dapp",
+                "key": "String",
+                "key_encoding": "utf8",
+                "value": "String"
+              },
+              {
+                "name": "contracts",
+                "index": 5,
+                "kind": "dictionary",
+                "dictionary": "__dapp",
+                "key": "String",
+                "key_encoding": "utf8",
+                "value": {
+                  "List": "Key"
+                }
+              },
+              {
+                "name": "registrars",
+                "index": 6,
+                "kind": "dictionary",
+                "dictionary": "__dapp",
+                "key": "String",
+                "key_encoding": "utf8",
+                "value": {
+                  "List": "Key"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "dapp",
+        "index": 4,
         "kind": "module",
         "fields": [
           {
@@ -971,6 +1362,12 @@
             "value": "Key"
           }
         ]
+      },
+      {
+        "name": "revision",
+        "index": 5,
+        "kind": "value",
+        "ty": "U8"
       }
     ]
   }
