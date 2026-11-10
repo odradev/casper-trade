@@ -577,10 +577,11 @@ mod tests {
     use crate::utils::sort_tokens;
     use crate::{
         factory::{Factory, FactoryInitArgs},
+        router::{Router, RouterInitArgs},
         sample_tokens::{SampleToken, SampleTokenHostRef, SampleTokenInitArgs},
         utils::{encode_price, expand_to_18_decimals},
     };
-    use odra_modules::dapp::OwnedDappRegistry;
+    use odra_modules::wrapped_native::WrappedNativeToken;
 
     use super::*;
     use odra::host::{HostRef, NoArgs};
@@ -605,19 +606,27 @@ mod tests {
         let alice = env.get_account(1);
         let bob = env.get_account(2);
         let pair_factory = PairFactory::deploy(&env, NoArgs);
-        let mut dapp_registry = OwnedDappRegistry::deploy(&env, NoArgs);
 
         let mut factory = Factory::deploy(
             &env,
             FactoryInitArgs {
                 fee_to: if fee_on { Some(bob) } else { None },
                 pair_factory: pair_factory.address(),
-                dapp_registry: dapp_registry.address(),
             },
         );
 
-        // The factory registers the pairs it creates.
-        dapp_registry.add_dapp_contract(&factory.address(), true);
+        // The router is the dapp registry; the factory joins it as a registrar, so it can register
+        // the pairs it creates.
+        let wcspr = WrappedNativeToken::deploy(&env, NoArgs);
+        let mut router = Router::deploy(
+            &env,
+            RouterInitArgs {
+                factory: factory.address(),
+                wcspr: wcspr.address(),
+            },
+        );
+        factory.set_dapp_registry(&router.address());
+        router.add_dapp_contract(&factory.address(), true);
         let token0 = SampleToken::deploy(
             &env,
             SampleTokenInitArgs {
